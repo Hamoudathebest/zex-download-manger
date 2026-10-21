@@ -1,0 +1,30 @@
+{
+    "action": {
+        "default_popup": "popup.html",
+        "default_title": "Download Manager"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "description": "Companion extension for a next-generation download manager. Surfaces explicit, user-chosen download affordances and forwards only the chosen http(s) link to the paired desktop app via Native Messaging. No silent capture, no cookies, no credentials.",
+    "icons": {
+        "128": "icons/icon128.png",
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png"
+    },
+    "manifest_version": 3,
+    "minimum_chrome_version": "109",
+    "name": "Download Manager Companion (Phase 1)",
+    "optional_host_permissions": [
+        "http://*/*",
+        "https://*/*"
+    ],
+    "permissions": [
+        "activeTab",
+        "contextMenus",
+        "downloads",
+        "scripting",
+        "storage"
+    ],
+    "version": "0.1.0"
+}

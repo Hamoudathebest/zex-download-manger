@@ -1,0 +1,9 @@
+{
+    "allowed_origins": [
+        "chrome-extension://REPLACE_WITH_YOUR_EXTENSION_ID/"
+    ],
+    "description": "Download Manager Companion native host (Phase 1 template)",
+    "name": "com.downloadmanager.nextgen",
+    "path": "C:\\Program Files\\DownloadManagerNextGen\\idm-nextgen-host.exe",
+    "type": "stdio"
+}

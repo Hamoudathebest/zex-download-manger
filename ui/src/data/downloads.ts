@@ -1,0 +1,105 @@
+/**
+ * Downloads data layer — Phase 1 honesty contract.
+ *
+ * Source (a): a REAL engine checkpoint/queue file, if one is present.
+ *   The prototype fetches `/engine-state.json` (same origin, served from
+ *   `public/` in dev, or written there by the real engine in Phase 2).
+ *   Its shape is documented in `public/engine-state.example.json`.
+ *   No such file exists in Phase 1, so the fetch 404s.
+ *
+ * Source (b): EXPLICIT DISCONNECTED / EMPTY state.
+ *   When the fetch fails, every page shows an empty list and a
+ *   "Not connected to the engine" banner. Nothing is invented:
+ *   no speeds, no progress percentages, no download counts are
+ *   presented as real.
+ *
+ * The optional static UI preview (see preview.ts) is a SEPARATE,
+ * opt-in, clearly-labelled mode. It is never the default and its
+ * rows are always badged PREVIEW. It exists only so reviewers can
+ * see table/chart layouts without a live engine.
+ */
+
+export type DownloadStatus =
+  | 'active'
+  | 'paused'
+  | 'queued'
+  | 'completed'
+  | 'failed'
+  | 'scheduled'
+
+export interface DownloadItem {
+  id: string
+  name: string
+  url: string
+  sizeBytes: number | null
+  downloadedBytes: number | null
+  /** Bytes/sec, ONLY when reported by the real engine. Null = unknown. */
+  speedBytesPerSec: number | null
+  status: DownloadStatus
+  category: 'file' | 'video' | 'other'
+  addedAt: string
+  /** 0–100, ONLY when reported by the real engine. Null = unknown. */
+  progressPercent: number | null
+}
+
+export type ConnectionState = 'loading' | 'connected' | 'disconnected'
+
+export interface EngineState {
+  generatedAt: string
+  downloads: DownloadItem[]
+}
+
+export interface DownloadsData {
+  connection: ConnectionState
+  /** Null when disconnected — callers must render the empty state. */
+  engine: EngineState | null
+  error: string | null
+}
+
+/** URL the real engine is expected to publish. Override with VITE_ENGINE_STATE_URL. */
+export const ENGINE_STATE_URL =
+  import.meta.env.VITE_ENGINE_STATE_URL ?? '/engine-state.json'
+
+export async function loadEngineState(signal?: AbortSignal): Promise<DownloadsData> {
+  try {
+    const res = await fetch(ENGINE_STATE_URL, { signal })
+    if (!res.ok) {
+      return {
+        connection: 'disconnected',
+        engine: null,
+        error: `Engine state not available (HTTP ${res.status} from ${ENGINE_STATE_URL}). Phase 1 has no live engine connection.`,
+      }
+    }
+    const parsed = (await res.json()) as EngineState
+    if (!parsed || !Array.isArray(parsed.downloads)) {
+      return {
+        connection: 'disconnected',
+        engine: null,
+        error: 'Engine state file was present but did not match the documented shape. Treated as disconnected rather than guessing.',
+      }
+    }
+    return { connection: 'connected', engine: parsed, error: null }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { connection: 'loading', engine: null, error: null }
+    }
+    return {
+      connection: 'disconnected',
+      engine: null,
+      error: `Could not reach the engine state file (${ENGINE_STATE_URL}). This is the expected Phase 1 state: no live metrics are connected.`,
+    }
+  }
+}
+
+export function formatBytes(bytes: number | null): string {
+  if (bytes === null || Number.isNaN(bytes)) return '—'
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+export function formatSpeed(bytesPerSec: number | null): string {
+  if (bytesPerSec === null) return '—'
+  return `${formatBytes(bytesPerSec)}/s`
+}

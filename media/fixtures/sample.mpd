@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic DASH manifest — authored for this project only.
+     Not copied from any real service. All URLs are fictional example paths. -->
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static"
+     mediaPresentationDuration="PT0H4M0.000S" minBufferTime="PT1.500S">
+  <Period>
+    <AdaptationSet id="1" contentType="video" mimeType="video/mp4" segmentAlignment="true">
+      <Representation id="v360" bandwidth="800000" width="640" height="360"
+                      frameRate="30" codecs="avc1.64001e">
+        <BaseURL>video/360p.mp4</BaseURL>
+      </Representation>
+      <Representation id="v720" bandwidth="2500000" width="1280" height="720"
+                      frameRate="30" codecs="avc1.64001f">
+        <BaseURL>video/720p.mp4</BaseURL>
+      </Representation>
+      <Representation id="v1080" bandwidth="6000000" width="1920" height="1080"
+                      frameRate="30" codecs="avc1.640028">
+        <BaseURL>video/1080p.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="2" contentType="audio" mimeType="audio/mp4" lang="en">
+      <Representation id="a-en" bandwidth="128000" codecs="mp4a.40.2"
+                      audioSamplingRate="48000">
+        <BaseURL>audio/en_128k.m4a</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="3" contentType="audio" mimeType="audio/mp4" lang="fr">
+      <Representation id="a-fr" bandwidth="128000" codecs="mp4a.40.2"
+                      audioSamplingRate="48000">
+        <BaseURL>audio/fr_128k.m4a</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="4" contentType="text" mimeType="text/vtt" lang="en">
+      <Representation id="s-en" bandwidth="1000">
+        <BaseURL>subs/en.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="5" contentType="text" mimeType="text/vtt" lang="fr">
+      <Representation id="s-fr" bandwidth="1000">
+        <BaseURL>subs/fr.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

@@ -1,0 +1,271 @@
+{
+  "source_kind": "hls",
+  "source": "/home/hatch/workspace/download-manager/media/fixtures/sample_master.m3u8",
+  "drm_protected": false,
+  "variants": [
+    {
+      "index": 0,
+      "uri": "audio/en_128k.m3u8",
+      "bandwidth_bps": 128000,
+      "resolution": null,
+      "width": null,
+      "height": null,
+      "frame_rate": null,
+      "codecs": "mp4a.40.2",
+      "video_codec": null,
+      "audio_codec": "mp4a.40.2",
+      "audio_group": "audio-en",
+      "subtitle_group": null,
+      "mime_type": null,
+      "is_audio_only": true,
+      "bandwidth_kbps": 128
+    },
+    {
+      "index": 1,
+      "uri": "video/360p.m3u8",
+      "bandwidth_bps": 800000,
+      "resolution": "640x360",
+      "width": 640,
+      "height": 360,
+      "frame_rate": 30.0,
+      "codecs": "avc1.64001e,mp4a.40.2",
+      "video_codec": "avc1.64001e",
+      "audio_codec": "mp4a.40.2",
+      "audio_group": "audio-en",
+      "subtitle_group": "subs",
+      "mime_type": null,
+      "is_audio_only": false,
+      "bandwidth_kbps": 800
+    },
+    {
+      "index": 2,
+      "uri": "video/720p.m3u8",
+      "bandwidth_bps": 2500000,
+      "resolution": "1280x720",
+      "width": 1280,
+      "height": 720,
+      "frame_rate": 30.0,
+      "codecs": "avc1.64001f,mp4a.40.2",
+      "video_codec": "avc1.64001f",
+      "audio_codec": "mp4a.40.2",
+      "audio_group": "audio-en",
+      "subtitle_group": "subs",
+      "mime_type": null,
+      "is_audio_only": false,
+      "bandwidth_kbps": 2500
+    },
+    {
+      "index": 3,
+      "uri": "video/1080p.m3u8",
+      "bandwidth_bps": 6000000,
+      "resolution": "1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "frame_rate": 30.0,
+      "codecs": "avc1.640028,mp4a.40.2",
+      "video_codec": "avc1.640028",
+      "audio_codec": "mp4a.40.2",
+      "audio_group": "audio-en",
+      "subtitle_group": "subs",
+      "mime_type": null,
+      "is_audio_only": false,
+      "bandwidth_kbps": 6000
+    }
+  ],
+  "audio_tracks": [
+    {
+      "kind": "audio",
+      "group_id": "audio-en",
+      "name": "English",
+      "language": "en",
+      "uri": "audio/en_128k.m3u8",
+      "default": true,
+      "autoselect": true,
+      "channels": "2",
+      "bandwidth_bps": null,
+      "format": null
+    },
+    {
+      "kind": "audio",
+      "group_id": "audio-fr",
+      "name": "Francais",
+      "language": "fr",
+      "uri": "audio/fr_128k.m3u8",
+      "default": false,
+      "autoselect": true,
+      "channels": "2",
+      "bandwidth_bps": null,
+      "format": null
+    }
+  ],
+  "subtitle_tracks": [
+    {
+      "kind": "subtitle",
+      "group_id": "subs",
+      "name": "English",
+      "language": "en",
+      "uri": "subs/en.vtt",
+      "default": false,
+      "autoselect": true,
+      "channels": null,
+      "bandwidth_bps": null,
+      "format": "webvtt"
+    },
+    {
+      "kind": "subtitle",
+      "group_id": "subs",
+      "name": "Francais",
+      "language": "fr",
+      "uri": "subs/fr.vtt",
+      "default": false,
+      "autoselect": true,
+      "channels": null,
+      "bandwidth_bps": null,
+      "format": "webvtt"
+    }
+  ],
+  "warnings": []
+}
+PASS: hls kind
+PASS: hls 4 variants (3 video + 1 audio-only)
+PASS: hls sorted ascending by bandwidth
+PASS: hls 1080p dims
+PASS: hls 1080p codecs split
+PASS: hls audio-only flagged
+PASS: hls 2 audio groups/tracks
+PASS: hls audio en default
+PASS: hls 2 subtitle tracks
+PASS: hls subtitle format webvtt
+PASS: hls not drm
+{
+  "source_kind": "dash",
+  "source": "/home/hatch/workspace/download-manager/media/fixtures/sample.mpd",
+  "drm_protected": false,
+  "variants": [
+    {
+      "index": 0,
+      "uri": "video/360p.mp4",
+      "bandwidth_bps": 800000,
+      "resolution": "640x360",
+      "width": 640,
+      "height": 360,
+      "frame_rate": 30.0,
+      "codecs": "avc1.64001e",
+      "video_codec": "avc1.64001e",
+      "audio_codec": null,
+      "audio_group": null,
+      "subtitle_group": null,
+      "mime_type": "video/mp4",
+      "is_audio_only": false,
+      "bandwidth_kbps": 800
+    },
+    {
+      "index": 1,
+      "uri": "video/720p.mp4",
+      "bandwidth_bps": 2500000,
+      "resolution": "1280x720",
+      "width": 1280,
+      "height": 720,
+      "frame_rate": 30.0,
+      "codecs": "avc1.64001f",
+      "video_codec": "avc1.64001f",
+      "audio_codec": null,
+      "audio_group": null,
+      "subtitle_group": null,
+      "mime_type": "video/mp4",
+      "is_audio_only": false,
+      "bandwidth_kbps": 2500
+    },
+    {
+      "index": 2,
+      "uri": "video/1080p.mp4",
+      "bandwidth_bps": 6000000,
+      "resolution": "1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "frame_rate": 30.0,
+      "codecs": "avc1.640028",
+      "video_codec": "avc1.640028",
+      "audio_codec": null,
+      "audio_group": null,
+      "subtitle_group": null,
+      "mime_type": "video/mp4",
+      "is_audio_only": false,
+      "bandwidth_kbps": 6000
+    }
+  ],
+  "audio_tracks": [
+    {
+      "kind": "audio",
+      "group_id": "2",
+      "name": "a-en",
+      "language": "en",
+      "uri": "audio/en_128k.m4a",
+      "default": false,
+      "autoselect": false,
+      "channels": "48000",
+      "bandwidth_bps": 128000,
+      "format": null
+    },
+    {
+      "kind": "audio",
+      "group_id": "3",
+      "name": "a-fr",
+      "language": "fr",
+      "uri": "audio/fr_128k.m4a",
+      "default": false,
+      "autoselect": false,
+      "channels": "48000",
+      "bandwidth_bps": 128000,
+      "format": null
+    }
+  ],
+  "subtitle_tracks": [
+    {
+      "kind": "subtitle",
+      "group_id": "4",
+      "name": "s-en",
+      "language": "en",
+      "uri": "subs/en.vtt",
+      "default": false,
+      "autoselect": false,
+      "channels": null,
+      "bandwidth_bps": null,
+      "format": "webvtt"
+    },
+    {
+      "kind": "subtitle",
+      "group_id": "5",
+      "name": "s-fr",
+      "language": "fr",
+      "uri": "subs/fr.vtt",
+      "default": false,
+      "autoselect": false,
+      "channels": null,
+      "bandwidth_bps": null,
+      "format": "webvtt"
+    }
+  ],
+  "warnings": []
+}
+PASS: dash kind
+PASS: dash 3 video variants
+PASS: dash sorted ascending
+PASS: dash 720p mime
+PASS: dash 2 audio tracks (en+fr)
+PASS: dash 2 subtitle tracks
+PASS: dash not drm
+PASS: drm flagged
+PASS: drm warning present
+PASS: bad input rejected
+MKV: /usr/bin/ffmpeg -y -i video.mp4 -i audio.m4a -i subs.vtt -map 0:v -map 1:a -map 2:s -c copy -c:s copy merged.mkv
+PASS: mkv uses -c copy + -c:s copy
+MP4: /usr/bin/ffmpeg -y -i video.mp4 -i audio.m4a -i subs.vtt -map 0:v -map 1:a -map 2:s -c copy -c:s mov_text -movflags +faststart merged.mp4
+PASS: mp4 subtitles use mov_text
+PASS: mp4 has faststart
+PASS: audio-only allowed
+ffmpeg detected: /usr/bin/ffmpeg
+PASS: ffmpeg detection runs (bool result)
+PASS: cli json variant count
+
+ALL 27 CHECKS PASSED

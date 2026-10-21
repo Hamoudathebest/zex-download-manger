@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download Manager</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Download Manager</h1>
+    <p class="subtitle">Companion &middot; Phase 1</p>
+  </header>
+
+  <section aria-label="Current site">
+    <p id="siteLine" class="site">Open a web page, then open this popup.</p>
+    <label class="toggle-row">
+      <input type="checkbox" id="siteToggle" disabled>
+      <span>Enable on this site</span>
+    </label>
+    <p class="hint">When off, nothing is scanned or captured on this site. Enabling asks the browser for permission for this site only, and you can revoke it in the extension settings.</p>
+  </section>
+
+  <section aria-label="Desktop app connection">
+    <h2>Desktop app</h2>
+    <p><span id="statusPill" class="pill unknown">Unknown</span></p>
+    <p id="statusDetail" class="hint">Not checked yet. This popup never claims a live connection it has not verified.</p>
+    <button id="checkBtn" type="button">Check connection</button>
+  </section>
+
+  <section aria-label="Actions">
+    <h2>Actions</h2>
+    <button id="scanBtn" type="button" disabled>Scan this page for downloads</button>
+    <button id="sendPageBtn" type="button" disabled>Send this page link to app</button>
+    <button id="browserDownloadBtn" type="button" hidden>Download with browser instead</button>
+    <p id="result" class="result" role="status" aria-live="polite"></p>
+  </section>
+
+  <footer>
+    <p class="hint">Only links you explicitly choose are sent, and only as http(s) URLs. No cookies, passwords, or tokens are ever read or sent. See README.md for permissions and limits.</p>
+  </footer>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

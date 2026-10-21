@@ -1,0 +1,48 @@
+Windows Registry Editor Version 5.00
+; ============================================================================
+; Download Manager Companion — Native Messaging host registration (EXAMPLE)
+; *** NOT TESTED ON WINDOWS HERE ***
+; This VM has no Windows machine, so these steps are a template for the
+; desktop-app installer / a user on Windows to adapt and verify. Do NOT
+; assume they work untested: verify on a real Windows + Chrome/Edge/Brave
+; install before shipping, and prefer having the desktop installer write
+; these keys itself (with the real install path and extension ID).
+;
+; What this does:
+;   Tells Chrome (HKCU key below) where to find the host manifest JSON.
+;   The browser then launches the host executable named in that JSON's
+;   "path" field whenever the extension calls chrome.runtime.connectNative
+;   with the matching host name. No other app can impersonate the extension:
+;   the JSON's allowed_origins must contain the extension's real ID.
+;
+; Before importing:
+;   1. Replace REPLACE_WITH_YOUR_EXTENSION_ID in
+;      com.downloadmanager.nextgen.json with the real ID from
+;      chrome://extensions (Developer mode -> the unpacked extension's ID,
+;      or the Web Store ID once published).
+;   2. Replace C:\Program Files\DownloadManagerNextGen\... in that JSON
+;      with the real installed host executable path.
+;   3. Copy that JSON to the SAME path used in the registry value below
+;      (or edit the value to point at the JSON's real location).
+;   4. Double-click this .reg file (or merge it with regedit) as the
+;      CURRENT user (HKCU — no admin rights needed for this key).
+; ============================================================================
+
+; --- Google Chrome ---
+[HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.downloadmanager.nextgen]
+@="C:\\Program Files\\DownloadManagerNextGen\\com.downloadmanager.nextgen.json"
+
+; --- Microsoft Edge (uncomment if Edge support is required) ---
+; [HKEY_CURRENT_USER\Software\Microsoft\Edge\NativeMessagingHosts\com.downloadmanager.nextgen]
+; @="C:\\Program Files\\DownloadManagerNextGen\\com.downloadmanager.nextgen.json"
+
+; --- Brave (uncomment if Brave support is required) ---
+; [HKEY_CURRENT_USER\Software\BraveSoftware\Brave\NativeMessagingHosts\com.downloadmanager.nextgen]
+; @="C:\\Program Files\\DownloadManagerNextGen\\com.downloadmanager.nextgen.json"
+
+; --- To UNINSTALL (remove registration only; delete the JSON/exe separately) ---
+; Delete the keys above, e.g. in regedit:
+;   HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.downloadmanager.nextgen
+; Or save the following as uninstall.reg and merge it:
+; Windows Registry Editor Version 5.00
+; [-HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.downloadmanager.nextgen]

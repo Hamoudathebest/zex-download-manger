@@ -1,0 +1,22 @@
+/* popup.css — minimal, no frameworks, no remote assets. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #202124; }
+main { width: 320px; padding: 16px; }
+h1 { margin: 0; font-size: 18px; }
+h2 { margin: 16px 0 8px; font-size: 14px; }
+.subtitle { margin: 2px 0 0; color: #5f6368; font-size: 12px; }
+.site { word-break: break-all; font-weight: 600; }
+.toggle-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+.hint { color: #5f6368; font-size: 12px; line-height: 1.5; }
+button { width: 100%; margin: 4px 0; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; }
+button:hover:not(:disabled) { background: #f0f4f9; }
+button:disabled { opacity: 0.5; cursor: default; }
+button[hidden] { display: none; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.pill.unknown { background: #e8eaed; color: #5f6368; }
+.pill.connected { background: #ceead6; color: #137333; }
+.pill.disconnected { background: #fce8e6; color: #b3261e; }
+.result { min-height: 1.2em; font-size: 13px; }
+.result.ok { color: #137333; }
+.result.err { color: #b3261e; }
+footer { border-top: 1px solid #e8eaed; margin-top: 12px; padding-top: 8px; }

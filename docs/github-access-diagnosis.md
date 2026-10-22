@@ -1,10 +1,34 @@
 # GitHub push access — diagnosis
 
-Status: **push blocked, not abandoned.** The code in this repository is
-complete for Phase 1 and ready to push. The blocker is GitHub App
-installation scope, not the code, not the workflow, and not a secret.
+Status (2026-10-22 VPS check): **public read access works; write access is
+not authenticated or verified.** The current CLI reports no logged-in
+GitHub account. Repository permissions and branch protection could not
+be inspected anonymously. This is the present blocker; the prior
+connector diagnosis below is historical evidence and was not
+independently revalidated from this VPS.
 
-## Evidence
+To enable a push, authenticate on the VPS with `gh auth login` using an
+account authorized to write to this exact repository, then verify the
+identity with `gh auth status`. Do not send a token or private key in
+chat. After authorization, check branch protection and test write access
+using a temporary branch before publishing project changes.
+
+## Current VPS evidence
+
+| Item | Verified value |
+| --- | --- |
+| Repository | `Hamoudathebest/zex-download-manger` |
+| Visibility/read | Public; anonymous `git ls-remote` and HTTPS clone succeeded |
+| GitHub CLI | `gh 2.97.0`; `gh auth status` says not logged in |
+| Remote write permissions | **Unknown** — no authenticated identity |
+| Branch protection / Actions release permissions | **Unknown** — not available to anonymous reads |
+| Push attempt from this VPS | None; a credential-free push test would not establish authorized access |
+
+## Prior connector report (2026-10-21; historical, not revalidated here)
+
+The following evidence was recorded by a prior connector workflow. It is
+retained as context, not treated as proof of current account or app
+permissions:
 
 | Item | Verified value |
 | --- | --- |

@@ -1,0 +1,89 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test and build Windows engine
+        working-directory: engine
+        run: |
+          cargo test --locked
+          cargo build --release --locked
+
+      - name: Run engine loopback integration tests
+        working-directory: engine/tests
+        run: python -m unittest -v test_engine
+
+      - name: Build UI prototype
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test media parser
+        working-directory: media
+        run: python tests/run_tests.py
+
+      - name: Validate extension sources
+        shell: pwsh
+        run: |
+          node --check extension/background.js
+          node --check extension/content.js
+          node --check extension/popup.js
+          node --check extension/firefox/background.js
+          node --check extension/firefox/popup.js
+          python -m json.tool extension/manifest.json > $null
+          python -m json.tool extension/firefox/manifest.json > $null
+
+      - name: Prepare real release artifacts
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME
+          $stage = Join-Path $PWD 'release-stage'
+          $cli = Join-Path $stage 'zex-download-manager-cli-windows-x64'
+          New-Item -ItemType Directory -Force -Path $cli, (Join-Path $stage 'extension-chromium') | Out-Null
+          Copy-Item engine/target/release/dm.exe (Join-Path $cli 'dm.exe')
+          Copy-Item README.md, LICENSE (Join-Path $cli '.')
+          Copy-Item CHANGELOG.md (Join-Path $cli 'CHANGELOG.md')
+          python tools/generate-icons.py --out extension/icons
+          Copy-Item extension/manifest.json, extension/background.js, extension/content.js, extension/popup.html, extension/popup.js, extension/popup.css (Join-Path $stage 'extension-chromium')
+          Copy-Item extension/icons (Join-Path $stage 'extension-chromium/icons') -Recurse
+          Compress-Archive -Path "$cli/*" -DestinationPath (Join-Path $stage "zex-download-manager-cli-windows-x64-$version.zip")
+          Compress-Archive -Path (Join-Path $stage 'extension-chromium/*') -DestinationPath (Join-Path $stage "zex-download-manager-chromium-extension-$version.zip")
+          Get-ChildItem $stage -File -Filter '*.zip' | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Add-Content -Encoding ascii (Join-Path $stage 'SHA256SUMS.txt')
+          }
+          "Development pre-release for $version. Contains the Rust command-line engine and Chromium extension package. The UI is a disconnected prototype; no integrated desktop application or MSI is included. Unsigned and not Windows-installation-tested." | Set-Content -Encoding utf8 (Join-Path $stage 'RELEASE_NOTES.txt')
+
+      - name: Publish development pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME release-stage/*.zip release-stage/SHA256SUMS.txt release-stage/RELEASE_NOTES.txt --title "ZEX Download Manager $env:GITHUB_REF_NAME" --notes-file release-stage/RELEASE_NOTES.txt --prerelease

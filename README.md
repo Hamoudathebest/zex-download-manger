@@ -11,7 +11,7 @@ from scratch, in the open, with no proprietary code.
 > default. What does exist is real and tested on loopback: a Rust
 > download engine, a Manifest V3 extension, an HLS/DASH media
 > parser, and a React UI prototype. See
-> [CHANGELOG.md](CHANGELOG.md) and the "Honest limits" section
+> [AUDIT.md](AUDIT.md), [TEST_REPORT.md](TEST_REPORT.md), and the "Honest limits" section
 > below for exactly what is and is not done.
 
 ## Features (Phase 1)
@@ -106,24 +106,28 @@ on a real Windows machine and browser — that is a Phase 2 test.
 
 ## Releases
 
-Releases are built by GitHub Actions on `windows-latest`, never on
-a developer's personal machine:
+Build and development pre-release workflows are defined for GitHub
+Actions on `windows-latest`; they have not yet run in GitHub and their
+artifacts are therefore not verified:
 
-- `.github/workflows/windows-build.yml` — every push/PR to `main`
-  builds and tests the engine, UI, and media parser, and uploads
-  an unsigned artefact (30-day retention).
-- `.github/workflows/release.yml` — version tags `v*.*.*` create a
-  GitHub Release with a portable Windows zip, a Chrome/Edge
-  extension zip, and `SHA256SUMS.txt`, plus release notes from
-  `CHANGELOG.md`.
+- `.github/workflows/windows-build.yml` — pushes to `main`, pull
+  requests and manual runs compile/test the Rust CLI for Windows x64,
+  run loopback engine integration tests, build the UI prototype, test
+  media parsing, validate extension syntax/manifests and upload the
+  actual CLI `.exe` as a short-lived CI artifact.
+- `.github/workflows/release.yml` — tags `v*.*.*` build and test the
+  same CLI and publish a **pre-release** with a CLI ZIP, Chromium
+  extension ZIP and SHA-256 checksums. It is not a GUI application;
+  it is unsigned and not yet Windows-installation-tested. The release
+  workflow has not been observed running successfully.
 
 A Firefox extension package, an NSIS installer, and an MSI are
-**planned, not shipped**: they appear in a release only when the
-corresponding manifest or installer project actually exists. Until
-then the release notes say so plainly. See
-`docs/github-access-diagnosis.md` for the current push blocker:
-the GitHub App must be installed on the repository owner's account
-with this repository selected before the first push can land.
+**not produced** by the current release workflow. The repo contains a
+Firefox manifest/source variant and an NSIS script, but neither has a
+complete verified packaging/test path; no MSI project exists. See
+`docs/github-access-diagnosis.md` for the current push blocker: this VPS
+has no authenticated GitHub CLI session, so remote write permissions
+are not yet verified.
 
 ## Honest limits (Phase 1)
 

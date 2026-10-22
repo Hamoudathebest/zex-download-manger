@@ -1,11 +1,11 @@
 # Roadmap — Download Manager (Phases 1–3)
 
-> **Status:** Plan, not progress report. Nothing in this roadmap is
-> marked done unless a test report or merged implementation says so.
+> **Status:** Phase plan; implementation progress is tracked in the root
+> `AUDIT.md` and `TEST_REPORT.md`. Those current reports supersede stale
+> environment and completion statements in this historical plan.
 > Dates below are **relative milestones** (Phase 1 → Phase 2 → Phase 3),
 > not calendar commitments: no calendar date is promised, because
-> Phase 2 depends on a Windows machine and a Rust toolchain that do
-> not exist in the current environment, and Phase 3 depends on
+> Phase 2 depends on a Windows machine that is not available here, and Phase 3 depends on
 > signing/packaging decisions that are still open.
 >
 > Companion docs: `architecture.md` (design + open decisions D-01…D-12)
@@ -24,7 +24,7 @@
 
 ```
 Phase 1 ── Linux foundation (THIS PHASE)
-  │  Engine prototype on Linux (Node 24) · CLI + local API
+  │  Engine prototype on Linux (Rust CLI) · local API remains unimplemented
   │  Segmented + resumable HTTP(S) · .part + checkpoint JSON
   │  Scheduler/queue · MV3 extension spec + native-host prototype
   │  Media: unencrypted HLS/DASH only, encrypted ⇒ refuse
@@ -65,19 +65,18 @@ Not a Windows build.
 | ID | Milestone | Deliverable / evidence | Depends on | Status |
 |---|---|---|---|---|
 | P1-M1 | Architecture + feature matrix + roadmap (this doc set) | `docs/architecture.md`, `docs/feature-matrix.md`, `docs/roadmap.md` | — | **Done (this delivery, Agent 1)** — docs only, not code |
-| P1-M2 | Engine core: probe → segment → fetch → assemble → verify | Engine code (sibling area `engine/`) passing unit tests for segmentation math, range headers, filename sanitisation, checkpoint round-trip | P1-M1 (contracts in architecture §3.6, §4, §9) | Open — sibling work |
-| P1-M3 | Persistence + crash recovery | `.part` + checkpoint JSON with atomic writes; SIGKILL → restart → resume → byte-identical output vs fixture | P1-M2 | Open |
-| P1-M4 | Scheduler + queue + throttling | Queue ordering, global/per-host concurrency, speed limits (token bucket), scheduling windows, pause/resume | P1-M2 | Open |
+| P1-M2 | Engine core: probe → segment → fetch → assemble → verify | Rust CLI implementation in `engine/`; unit and real HTTP integration tests pass for documented behaviors (see root `TEST_REPORT.md`) | P1-M1 (contracts in architecture §3.6, §4, §9) | **Partial** — CLI works; local API and specified filename sanitisation are absent |
+| P1-M3 | Persistence + crash recovery | `.part` + checkpoint JSON with atomic writes; SIGKILL → restart → resume → byte-identical output vs fixture | P1-M2 | **Partial** — Ctrl-C pause/resume is tested; SIGKILL/atomic crash recovery gate not demonstrated |
+| P1-M4 | Scheduler + queue + throttling | Queue ordering, global/per-host concurrency, speed limits (token bucket), scheduling windows, pause/resume | P1-M2 | **Partial** — aggregate throttle exists and is tested; queue/scheduler do not exist |
 | P1-M5 | Local API + CLI | Loopback API (§3.6 methods) + CLI driver; API versioning + token auth | P1-M2, P1-M4 | Open |
-| P1-M6 | Browser extension spec + native-host prototype | MV3 manifest (minimal permissions), content script + service worker, native host with schema validation + framing tests (no browser required for host tests) | P1-M5 (API contract) | Open — spec in architecture §5; host in sibling area `extension/native-host/` |
-| P1-M7 | Media subsystem (narrow scope) | Unencrypted HLS master/media playlist parsing, variant listing, segment resolution, TS concat; encrypted/live refusal paths with typed errors | P1-M2 | Open |
-| P1-M8 | Test harness + Phase 1 test report | Local HTTP fixture server (§16.2 in architecture); unit + crash-recovery + checkpoint-corruption + media + host-contract tests; written report with method, environment (Linux VM, Node 24.20.0), and real measured results or `not-run` | P1-M2…P1-M7 | Open — **this is the Phase 1 exit evidence** |
+| P1-M6 | Browser extension spec + native-host prototype | MV3 manifests, content scripts and service workers exist; native host with schema validation/framing tests is still required | P1-M5 (API contract) | **Partial** — extension sources exist; host integration absent and browsers untested |
+| P1-M7 | Media subsystem (narrow scope) | Unencrypted HLS master/media playlist parsing, variant listing, segment resolution, TS concat; encrypted/live refusal paths with typed errors | P1-M2 | **Partial** — static playlist parsing and FFmpeg command builder tested; segment transfer/job execution absent |
+| P1-M8 | Test harness + Phase 1 test report | Local HTTP fixture server (§16.2 in architecture); unit + crash-recovery + checkpoint-corruption + media + host-contract tests; written report with method and real measured results or `not-run` | P1-M2…P1-M7 | **Partial** — root `TEST_REPORT.md`; SIGKILL, checkpoint corruption and host contract gates remain unverified |
 | P1-M9 | Decision convergence | D-04 (host transport), D-06 (checkpoint suffix/layout) settled and recorded; D-01/D-02 recommendations written for Phase 2 (not yet executed) | P1-M6, P1-M3 | Open |
 
 ### 1.2 What Phase 1 deliberately does NOT include
 
-- No Tauri app, no Rust engine core, no Windows installer (no
-  toolchain, no Windows machine — architecture §1.3).
+- No Tauri app and no verified Windows installer (Windows machine unavailable; the standalone Rust CLI exists and is documented in root `AUDIT.md`).
 - No automatic browser capture, no traffic interception, no site
   grabber, no clipboard monitoring (see feature-matrix gaps).
 - No DRM/encrypted-media handling beyond refusal (architecture §6.4).
@@ -129,7 +128,7 @@ Linux-only VM** — it requires environment changes listed in §2.1.
 | Prerequisite | Why it blocks Phase 2 | Status |
 |---|---|---|
 | A real Windows test machine (physical or VM, with admin for install testing) | Installer, WebView2, Native Host registry, power management, and browser integration cannot be verified on Linux | **Not available** — must be provisioned before Phase 2 testing |
-| Rust toolchain (stable, pinned version) + cargo | Tauri 2 builds require Rust; `rustc` is absent on the current VM (verified 2026-10-21) | **Not installed** |
+| Rust toolchain (stable, pinned version) + cargo | Tauri 2 builds require Rust | **Installed on Linux (Rust 1.96.1); pinning and Windows runner validation remain** |
 | Chromium/Chrome + Firefox on the Windows test machine | Browser extension testing (MV3 install, Native Messaging registration, handoff) | Not available until test machine exists |
 | Test accounts / public test files (licence-free) for Windows runs | Deterministic, lawful test content (no copyrighted/DRM material) | To be assembled at Phase 2 start |
 

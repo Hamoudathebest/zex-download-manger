@@ -1,0 +1,76 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test and build Rust engine
+        working-directory: engine
+        run: |
+          cargo test --locked
+          cargo build --release --locked
+
+      - name: Run engine loopback integration tests
+        working-directory: engine/tests
+        run: python -m unittest -v test_engine
+
+      - name: Test and build UI prototype
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test media parser and FFmpeg builder
+        working-directory: media
+        run: python tests/run_tests.py
+
+      - name: Validate browser extension JavaScript and manifests
+        shell: pwsh
+        run: |
+          node --check extension/background.js
+          node --check extension/content.js
+          node --check extension/popup.js
+          node --check extension/firefox/background.js
+          node --check extension/firefox/popup.js
+          python -m json.tool extension/manifest.json > $null
+          python -m json.tool extension/firefox/manifest.json > $null
+
+      - name: Stage engine CLI artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Copy-Item engine/target/release/dm.exe artifacts/dm-windows-x64.exe
+          Get-FileHash artifacts/dm-windows-x64.exe -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dm-windows-x64-${{ github.sha }}
+          path: artifacts/dm-windows-x64.exe
+          if-no-files-found: error
+          retention-days: 14

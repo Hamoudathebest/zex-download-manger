@@ -47,6 +47,8 @@ DM_BIN = os.environ.get(
     os.path.join(os.path.dirname(os.path.abspath(__file__)),
                  "..", "target", "release", "dm"),
 )
+if os.name == "nt" and not DM_BIN.lower().endswith(".exe"):
+    DM_BIN += ".exe"
 
 
 def make_fixture(path):
@@ -172,10 +174,13 @@ class EngineTests(unittest.TestCase):
         proc = subprocess.Popen(
             [DM_BIN, self.file_url, dest, "--connections", "4",
              "--throttle", "256k"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
         time.sleep(2.5)
         self.assertIsNone(proc.poll(), "dm finished before SIGINT (too fast?)")
-        proc.send_signal(signal.SIGINT)
+        proc.send_signal(
+            signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
         _, stderr = proc.communicate(timeout=30)
         print(f"[03] pause rc={proc.returncode}")
         self.assertEqual(proc.returncode, 130, stderr)

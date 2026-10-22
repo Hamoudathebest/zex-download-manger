@@ -1,6 +1,6 @@
-# Download Manager — System Architecture (Phase 1, Chief Architect)
+# Download Manager — System Architecture (Phase 1 design baseline)
 
-> **Status:** Foundation / design document — Phase 1 Linux prototype.
+> **Status:** Historical foundation/design baseline. The implementation inventory and current test evidence are maintained in the root `AUDIT.md` and `TEST_REPORT.md`; those supersede environment and implementation-status statements below.
 > **Author role:** Agent 1 — Chief Architect (Phase 1).
 > **Scope boundary:** Work under `~/workspace/download-manager/` only. No production
 > system, no TitanGuard / quest-bot code, and no Windows machine was touched.
@@ -10,8 +10,7 @@
 > - No authorized Internet Download Manager (IDM) binary was available in this
 >   environment, and **no IDM binary was downloaded, decompiled, copied, or
 >   reverse-engineered** in this work.
-> - No Windows `.exe` / `.msi` was built here. The VM is Linux-only (see
->   §1.3), Rust is **not** preinstalled, and Tauri/Windows packaging is a
+> - No Windows `.exe` / `.msi` has been built or run on this Linux host. Rust is now installed and a Rust CLI download engine exists; Tauri/Windows packaging is a
 >   **planned Phase 2** activity, not a Phase 1 result.
 > - Every claim about IDM in this document and in `feature-matrix.md` is
 >   labelled `public-doc` (public IDM documentation / widely described public
@@ -85,22 +84,22 @@
 | A cloud account, sync service, or telemetry backend | No server component in Phase 1. All state is local. |
 | Claiming IDM parity | Parity is a Phase 3 evaluation question, judged against public docs + real Windows testing — not asserted now. |
 
-### 1.3 Environment constraints actually present (verified 2026-10-21)
+### 1.3 Environment constraints recorded in the original baseline (2026-10-21)
 
 | Fact | Value / evidence |
 |---|---|
 | Host OS | Linux VM (this workspace host). No Windows machine access. |
 | Node.js | v24.20.0 (`node --version`, verified this session) |
 | Python | 3.12.3 (`python3 --version`, verified this session) |
-| Rust toolchain | **Not installed** (`rustc: command not found`, verified this session). Tauri 2 cannot be built here until a toolchain is installed — hence Tauri is `planned`, not `built`. |
+| Rust toolchain | Rust/Cargo 1.96.1 are installed on the current VPS (verified 2026-10-22; see root `AUDIT.md`). Tauri 2 is still not implemented. |
 | IDM binary | None available; none fetched. |
 | Other agents' areas | `engine/`, `extension/`, `ui/`, `specs/` directories exist in the shared project tree (scaffolded by sibling agents). This document does not modify their code; it defines the contracts their code should satisfy. Where a sibling implementation already diverges from this doc, the divergence is an open decision (§17), not a silent override. |
 
-**Consequence for Phase 1 prototyping:** the runnable prototype is
-Node.js (and, where convenient, Python for tooling/tests) on Linux. The
-engine core is specified language-agnostically in §4 so that a later
-Rust/Tauri port does not require a redesign — but Phase 1 does **not**
-pretend the Rust core exists.
+**Current implementation:** a Rust CLI download engine exists in
+`engine/` and has passed local loopback tests; it does not yet implement
+the local API, scheduler, or desktop integration described in this
+design. The existing React UI remains a disconnected prototype. Refer
+to `AUDIT.md` for verified scope and `TEST_REPORT.md` for test results.
 
 ### 1.4 Design principles
 

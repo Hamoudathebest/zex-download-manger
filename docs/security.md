@@ -767,26 +767,21 @@ specified here, or not be offered at all.
 
 ## 10. Dependency scanning **[DESIGN + HONEST STATUS]**
 
-### 10.1 What was actually run here — nothing, and no pass is claimed
+### 10.1 Current scan status (2026-10-22)
 
-**No dependency scan was run for this deliverable, and no scan result is
-claimed.** The reasons are factual and checkable:
+- `ui/`: `npm ci` completed and npm reported **0 vulnerabilities** across
+  50 audited packages. This is the UI dependency audit at that time; it
+  does not establish that the project is vulnerability-free.
+- `engine/`: a Rust manifest and lockfile exist. `cargo audit` was not
+  run during this audit; no Rust advisory scan result is claimed.
+- `extension/` and `media/`: there is no package-manager dependency
+  install in the current implementation; this does not replace review of
+  browser API permissions or the FFmpeg binary supply chain.
 
-- `engine/` and `extension/` contain no code and no dependency manifests
-  (no `package.json`, `Cargo.toml`, `requirements.txt`, or equivalent),
-  so there is nothing in them to scan yet.
-- `ui/` contains a `package.json` (stock Vite template: `react`,
-  `react-dom`, `@vitejs/plugin-react`, `typescript`, `vite`, `oxlint`,
-  `@types/*`) but **no lockfile and no installed `node_modules`** as of
-  2026-10-21. Running `npm audit` meaningfully requires a lockfile;
-  generating one (via `npm install`) would modify `ui/` and install
-  packages, which is outside this security document's scope and was not
-  done.
-- `cargo` is not installed in this environment, so `cargo audit` could
-  not have been run even if a Rust manifest existed.
-
-The first real scan must happen when the first real manifest lands, and
-its result must be recorded in §10.3 — not backdated, not assumed.
+The previous status below was written before these components and lock
+files existed. Do not use its 2026-10-21 inventory as a current
+description. Record future scans in §10.3 with the command, tool version,
+date and result.
 
 ### 10.2 How to run a scan (per ecosystem, when a manifest exists)
 

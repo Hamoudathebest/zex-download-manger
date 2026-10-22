@@ -44,7 +44,9 @@ jobs:
 
       - name: Test Native Messaging host framing
         working-directory: engine/tests
-        run: python -m unittest -v test_native_host
+        run: |
+          python -m unittest -v test_native_host
+          python -m unittest -v test_native_host_download
 
       - name: Build Tauri desktop application and NSIS installer
         working-directory: ui

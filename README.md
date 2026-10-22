@@ -131,8 +131,8 @@ artifacts and SHA-256 values are recorded in `TEST_REPORT.md`.
   publish a **pre-release** with a CLI ZIP, Chromium extension ZIP,
   installer and SHA-256 checksums. The installer is unsigned and browser
   pairing requires an extension ID entered in the app. This workflow has
-  passed build/install/start smoke on `windows-latest`; no tagged
-  release has been published.
+  published development pre-release `v0.2.0` after successful build and
+  installer/startup checks.
 
 A Firefox extension package and an MSI are **not produced** by the
 current release workflow. Firefox-specific source exists but is not

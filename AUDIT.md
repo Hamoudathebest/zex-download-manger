@@ -23,7 +23,7 @@ The checkout contains Rust engine sources/tests, Chromium and Firefox extension 
 | Media (`media/`) | Static HLS/DASH playlist parsing, variant/audio/subtitle metadata, DRM marker refusal and FFmpeg command builder exist. Playlist fetching/segment transfer, end-to-end media jobs, and conversion/merge execution are absent. |
 | UI (`ui/`) | React/TypeScript interface with ten navigation views and a Tauri 2 shell. It starts the real CLI, polls actual progress, persists jobs shared with Native Messaging, and registers Chromium host manifests per-user. Linux cargo build/tests pass. Windows app install/start smoke passes on `windows-latest`; pause/cancel, queue/scheduler and service lifecycle remain missing. |
 | Installer | Tauri NSIS bundle packages the desktop app and engine resources; Windows CI silently installed it and confirmed the app process stays alive through startup. Legacy `installer/download-manager.nsi` remains a separate CLI-only installer script. No MSI project exists. |
-| CI/release | The audited checkout lacked workflows; this branch added Windows build and pre-release workflows. Run `39850739198` passed engine tests, Native Messaging tests, Tauri build/NSIS install/start smoke, media tests and extension checks, and uploaded three Windows executables. No tag release has been published. |
+| CI/release | Windows run `39850739198` passed engine tests, Native Messaging tests, Tauri build/NSIS install/start smoke, media tests and extension checks, and uploaded three Windows executables. The tag workflow subsequently published development pre-release `v0.2.0` with checksummed assets. |
 | Documentation | README, license, contribution, security, changelog, third-party notices, and lowercase `docs/architecture.md` / `docs/roadmap.md` exist. Root `ARCHITECTURE.md`, `ROADMAP.md`, `AUDIT.md` and `TEST_REPORT.md` were missing before this audit. |
 
 No IDM binary or proprietary IDM source was present or analyzed. No parity, speed superiority, Windows operation, or release readiness is established by this audit.
@@ -47,7 +47,7 @@ No IDM binary or proprietary IDM source was present or analyzed. No parity, spee
 ## Priority gaps
 
 1. Keep the passing Windows CI run and artifact hashes recorded; next verify a GUI-driven download and browser handoff on an interactive Windows 10/11 machine.
-2. Run live Chrome/Edge/Brave pairing and browser-to-desktop download tests; Firefox packaging remains incomplete.
+2. Validate the newly added Native Messaging-to-engine download test on Windows, then run live Chrome/Edge/Brave browser pairing; Firefox packaging remains incomplete.
 3. Add pause/cancel controls, SQLite-backed history, queue and scheduler lifecycle.
 4. Add end-to-end media transfer around the parser, with explicit user selection and protected-content refusal.
 5. Add ETag-change, flaky-server retry and crash-kill recovery regression tests.
@@ -55,8 +55,8 @@ No IDM binary or proprietary IDM source was present or analyzed. No parity, spee
 
 ## GitHub publication status
 
-The VPS is authenticated as `Hamoudathebest`; GitHub API reports repository push/admin permissions. Branch `engineering/audit-windows-ci` and PR #1 target `main`; latest pushed commit is `c44861e`. Branch protection is disabled. Subsequent milestone commits must be pushed to this PR branch and checked in Actions before any merge or release.
+The VPS is authenticated as `Hamoudathebest`; GitHub API reports repository push/admin permissions. Branch `engineering/audit-windows-ci` and PR #1 target `main`; latest pushed commit is `36cbc6d`. Branch protection is disabled. Development pre-release `v0.2.0` is published; subsequent milestone commits must be pushed to this PR branch and checked in Actions before merge or additional releases.
 
 ## Changes made during this audit
 
-Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Linux Tauri build/tests/Clippy pass, and Windows run `39850739198` built the NSIS installer, installed it and smoke-launched the desktop app. Live browser handshake and interactive Windows 10/11 coverage remain pending.
+Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Linux Tauri build/tests/Clippy pass, and Windows run `39850739198` built the NSIS installer, installed it and smoke-launched the desktop app. Development pre-release `v0.2.0` is published; live browser handshake, GUI-driven download and interactive Windows 10/11 coverage remain pending.

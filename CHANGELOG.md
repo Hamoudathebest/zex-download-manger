@@ -10,21 +10,23 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
   `THIRD_PARTY_NOTICES.md`, and this changelog.
 - Published audit branch `engineering/audit-windows-ci` and pull
   request #1 to `main`; access and commit publication are verified.
-- Windows CI and development pre-release workflows build the CLI,
-  Native Messaging host, Tauri UI/NSIS installer, extension package,
-  and checksums. First Windows CI run found the test-08 SIGINT issue;
-  the fix and a Tauri startup smoke test are in the pending rerun.
-- Tauri 2 desktop source now starts the real Rust CLI, persists local
-  download records, displays engine progress, and provides per-user
-  Chromium Native Messaging registration. The live Windows workflow,
-  installer and browser handshake are not yet verified.
+- Windows CI run `39850739198` passed engine/host tests, Tauri build,
+  NSIS install/start smoke, media and extension checks, and uploaded the
+  CLI, Native Messaging host and installer artifacts.
+- Published development pre-release [`v0.2.0`](https://github.com/Hamoudathebest/zex-download-manger/releases/tag/v0.2.0)
+  after its tag workflow rebuilt, tested and checksummed the Windows assets.
+- Tauri 2 desktop source starts the real Rust CLI, persists local download
+  records, displays observed progress, and provides per-user Chromium
+  Native Messaging registration. Interactive browser handoff remains unverified.
 - Native Messaging host protocol and shared download-state persistence
   are implemented and Linux-tested. Firefox pairing remains incomplete.
+- Added a loopback end-to-end Native Messaging test that verifies the host
+  starts `dm`, downloads the exact fixture bytes and persists the job record.
+  Linux passes; Windows CI verification is queued.
 - Icon generation: `tools/generate-icons.py` (standard library only)
   regenerates the extension PNG icons inside CI, because the
   connector snapshot-push route accepts text files only.
-- MSI packaging is not implemented. Windows installer output is pending
-  a successful Windows CI build/install/launch run. No Firefox extension
+- MSI packaging is not implemented. No Firefox extension
   release package or live browser proof is claimed.
 
 ## [0.1.0] — 2026-10-21 (Phase 1 foundation)

@@ -7,8 +7,10 @@ from scratch, in the open, with no proprietary code.
 > not a finished product or a claim of parity with
 > Internet Download Manager (IDM). GitHub Actions built the Windows CLI
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
-> `windows-latest`. This is not a Windows 10/11 user-machine compatibility
-> test. The browser extension has not been live-tested, and builds are
+> `windows-latest`. That successful revision predates the newest GUI
+> Resume/Pause/Cancel controls; a follow-up Windows run is pending. This is not a
+> Windows 10/11 user-machine compatibility test. The browser extension
+> has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,
 > Tauri desktop shell, Native Messaging host, Manifest V3 extension, and
 > HLS/DASH parser; see
@@ -22,8 +24,8 @@ from scratch, in the open, with no proprietary code.
   parallel connections, and falls back to a single connection when
   a server does not support ranges. More connections do not always
   mean faster downloads; the engine is benchmarked, not assumed.
-- **Pause and resume** — progress is checkpointed to JSON, so a
-  download interrupted with Ctrl-C can be resumed with `--resume`.
+- **Pause and resume** — progress is checkpointed to JSON; Ctrl-C in the
+  CLI or Pause in the desktop shell saves a checkpoint for `--resume`.
   Resumed downloads refuse a changed file size or ETag instead of
   silently producing a corrupt file.
 - **Retry, throttle, verify** — exponential-backoff retries,
@@ -42,16 +44,17 @@ from scratch, in the open, with no proprietary code.
   and is not bundled.
 - **Desktop UI (in progress)** — React + TypeScript + Tailwind in a
   Tauri 2 shell with ten navigation views. The shell starts real CLI
-  downloads, shows observed progress and persists job records; pause,
-  cancel, queue/scheduler actions and completed-history management are
-  still incomplete.
+  downloads, shows observed progress, persists job records and resumes
+  interrupted jobs with a valid checkpoint; Pause and Cancel use engine
+  control files but await Windows CI verification. Queue/scheduler actions
+  and completed-history management remain incomplete.
 - **Browser companion** — a Rust Native Messaging host validates chosen
   URLs, starts the real engine and writes shared job state. The Tauri
   app can register Chromium extension IDs. Live browser handshake and
   Firefox pairing remain unverified/incomplete.
 - **Persistence** — download checkpoints and desktop history currently
-  use JSON files. SQLite migration, reliable cross-session pause/resume
-  controls in the GUI, and queue/scheduler management remain open work.
+  use JSON files. SQLite migration and queue/scheduler management remain
+  open work.
 
 ## Repository layout
 

@@ -28,6 +28,7 @@ export type DownloadStatus =
   | 'failed'
   | 'scheduled'
   | 'interrupted'
+  | 'cancelled'
 
 export interface DownloadItem {
   id: string
@@ -42,6 +43,7 @@ export interface DownloadItem {
   addedAt: string
   /** 0–100, ONLY when reported by the real engine. Null = unknown. */
   progressPercent: number | null
+  resumable?: boolean
 }
 
 export type ConnectionState = 'loading' | 'connected' | 'disconnected'
@@ -114,6 +116,21 @@ export async function loadEngineState(signal?: AbortSignal): Promise<DownloadsDa
 export async function startDesktopDownload(url: string): Promise<void> {
   if (!isDesktopRuntime()) throw new Error('Adding downloads requires the ZEX desktop application.')
   await invoke('start_download', { url })
+}
+
+export async function resumeDesktopDownload(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Resuming downloads requires the ZEX desktop application.')
+  await invoke('resume_download', { id })
+}
+
+export async function pauseDesktopDownload(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Pause is available only in the ZEX desktop application.')
+  await invoke('pause_download', { id })
+}
+
+export async function cancelDesktopDownload(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Cancel is available only in the ZEX desktop application.')
+  await invoke('cancel_download', { id })
 }
 
 export function formatBytes(bytes: number | null): string {

@@ -57,7 +57,19 @@ export function EmptyState({ message }: { message: string }) {
   )
 }
 
-export function DownloadTable({ items, preview }: { items: DownloadItem[]; preview: boolean }) {
+export function DownloadTable({
+  items,
+  preview,
+  onResumeDownload,
+  onPauseDownload,
+  onCancelDownload,
+}: {
+  items: DownloadItem[]
+  preview: boolean
+  onResumeDownload?: (id: string) => Promise<void>
+  onPauseDownload?: (id: string) => Promise<void>
+  onCancelDownload?: (id: string) => Promise<void>
+}) {
   if (items.length === 0) return <EmptyState message="No downloads to show." />
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -72,6 +84,7 @@ export function DownloadTable({ items, preview }: { items: DownloadItem[]; previ
             <th scope="col" className="px-4 py-2">Size</th>
             <th scope="col" className="px-4 py-2">Progress</th>
             <th scope="col" className="px-4 py-2">Speed</th>
+            {(onResumeDownload || onPauseDownload || onCancelDownload) && <th scope="col" className="px-4 py-2">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -106,6 +119,34 @@ export function DownloadTable({ items, preview }: { items: DownloadItem[]; previ
                 )}
               </td>
               <td className="px-4 py-2">{formatSpeed(d.speedBytesPerSec)}</td>
+              {(onResumeDownload || onPauseDownload || onCancelDownload) && (
+                <td className="px-4 py-2">
+                  {d.status === 'active' && onPauseDownload && (
+                    <button
+                      type="button"
+                      onClick={() => void onPauseDownload(d.id)}
+                      className="mr-1 rounded border border-gray-500 px-2 py-1 text-xs font-medium"
+                    >Pause</button>
+                  )}
+                  {d.resumable && onResumeDownload && (
+                    <button
+                      type="button"
+                      onClick={() => void onResumeDownload(d.id)}
+                      className="mr-1 rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
+                    >
+                      Resume
+                    </button>
+                  )}
+                  {onCancelDownload && ['active', 'paused', 'interrupted', 'failed'].includes(d.status) && (
+                    <button
+                      type="button"
+                      onClick={() => void onCancelDownload(d.id)}
+                      className="rounded border border-red-600 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300"
+                    >Cancel</button>
+                  )}
+                  {d.status !== 'active' && !d.resumable && !onCancelDownload && '—'}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -142,7 +183,8 @@ export function Card({ title, children }: { title: string; children: ReactNode }
 export function DisabledActionNote() {
   return (
     <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-      This control is unavailable until its corresponding engine command exists. No action is simulated.
+      Queue and scheduler controls are not implemented. Resume is enabled only when
+      a matching partial file and checkpoint are present; no action is simulated otherwise.
     </p>
   )
 }

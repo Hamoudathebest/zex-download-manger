@@ -32,6 +32,8 @@ struct NativeDownloadRecord {
     progress_percent: Option<f64>,
     destination: String,
     error: Option<String>,
+    #[serde(default)]
+    resumable: bool,
 }
 
 fn app_data_directory() -> Result<PathBuf, String> {
@@ -199,7 +201,12 @@ fn available_destination(directory: &Path, filename: &str) -> Result<PathBuf, St
             .unwrap_or("download");
         let part_file = directory.join(format!("{filename}.part"));
         let checkpoint_file = directory.join(format!("{filename}.checkpoint.json"));
-        if !destination.exists() && !part_file.exists() && !checkpoint_file.exists() {
+        let control_file = directory.join(format!("{filename}.control"));
+        if !destination.exists()
+            && !part_file.exists()
+            && !checkpoint_file.exists()
+            && !control_file.exists()
+        {
             return Ok(destination);
         }
     }
@@ -263,6 +270,8 @@ fn start_download(message: &Value) -> Result<(String, String), String> {
     let mut child = Command::new(engine)
         .arg(url)
         .arg(&destination)
+        .arg("--control-file")
+        .arg(format!("{}.control", destination.to_string_lossy()))
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -302,6 +311,7 @@ fn start_download(message: &Value) -> Result<(String, String), String> {
         progress_percent: None,
         destination: destination.to_string_lossy().into_owned(),
         error: None,
+        resumable: false,
     };
     if let Err(error) = persist_download_record(record) {
         let _ = child.kill();
@@ -401,6 +411,7 @@ mod tests {
             progress_percent: None,
             destination: directory.join("fixture.bin").to_string_lossy().into_owned(),
             error: None,
+            resumable: false,
         };
         persist_record_in(&directory, record).unwrap();
         let state: serde_json::Value =

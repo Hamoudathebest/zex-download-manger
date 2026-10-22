@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { isDesktopRuntime, loadEngineState, startDesktopDownload, type DownloadsData } from './data/downloads'
+import {
+  cancelDesktopDownload,
+  isDesktopRuntime,
+  loadEngineState,
+  pauseDesktopDownload,
+  resumeDesktopDownload,
+  startDesktopDownload,
+  type DownloadsData,
+} from './data/downloads'
 import { previewDownloads } from './data/preview'
 import Dashboard from './pages/Dashboard'
 import ActiveDownloads from './pages/ActiveDownloads'
@@ -87,6 +95,37 @@ export default function App() {
     }
   }
 
+  async function resumeDownload(id: string) {
+    setAdding(true)
+    setAddError(null)
+    try {
+      await resumeDesktopDownload(id)
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function pauseDownload(id: string) {
+    try {
+      await pauseDesktopDownload(id)
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function cancelDownload(id: string) {
+    setAddError(null)
+    try {
+      await cancelDesktopDownload(id)
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   // "/" focuses search; Escape clears it. Navigation focus moves to main on route change.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -109,6 +148,9 @@ export default function App() {
   const props = {
     items, connection: preview ? 'preview' : data.connection, error: data.error,
     preview, onTogglePreview: () => setPreview((p) => !p),
+    onResumeDownload: isDesktopRuntime() && !preview ? resumeDownload : undefined,
+    onPauseDownload: isDesktopRuntime() && !preview ? pauseDownload : undefined,
+    onCancelDownload: isDesktopRuntime() && !preview ? cancelDownload : undefined,
   }
 
   return (
@@ -118,7 +160,7 @@ export default function App() {
       </a>
       <div className="flex min-h-screen flex-col md:flex-row">
         <nav aria-label="Primary" className="w-full shrink-0 border-b border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:w-64 md:border-r md:border-b-0">
-          <p className="mb-4 text-lg font-bold">Download Manager <span className="block text-xs font-normal text-gray-500">Phase 1 web prototype</span></p>
+          <p className="mb-4 text-lg font-bold">ZEX Download Manager <span className="block text-xs font-normal text-gray-500">{isDesktopRuntime() ? 'Desktop development build' : 'Web preview'}</span></p>
           <ul className="flex flex-row flex-wrap gap-1 md:flex-col">
             {ROUTES.map((r) => (
               <li key={r.slug}>

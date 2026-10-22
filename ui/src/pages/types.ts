@@ -6,6 +6,9 @@ export interface PageProps {
   error: string | null
   preview: boolean
   onTogglePreview: () => void
+  onResumeDownload?: (id: string) => Promise<void>
+  onPauseDownload?: (id: string) => Promise<void>
+  onCancelDownload?: (id: string) => Promise<void>
 }
 
 export const filterBy = (items: DownloadItem[], pred: (d: DownloadItem) => boolean) =>

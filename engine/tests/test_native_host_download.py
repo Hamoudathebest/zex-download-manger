@@ -138,6 +138,7 @@ class NativeHostDownloadTests(unittest.TestCase):
             self.assertEqual(len(records), 1)
             self.assertEqual(records[0]["status"], "active")
             self.assertEqual(records[0]["destination"], destination)
+            self.assertFalse(os.path.exists(destination + ".control"))
 
         server.shutdown()
         server.server_close()

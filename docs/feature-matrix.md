@@ -91,9 +91,9 @@ column says "Phase 2/3" is a gap in Phase 1, stated plainly.
 
 | # | Feature | IDM (public description) | Planned implementation | Basis / planned status |
 |---|---|---|---|---|
-| 4.1 | Platform: Windows | IDM is a Windows-only product (publicly). | Run `39850739198` built the CLI, Native Messaging host and Tauri NSIS installer, passed engine/host tests, and installed/smoke-launched the app on `windows-latest`. Interactive browser handoff and Windows 10/11 user-machine compatibility remain unverified. | `public-doc` / `implemented-partial` (CI smoke evidence; user-machine verification open) |
+| 4.1 | Platform: Windows | IDM is a Windows-only product (publicly). | Run `39856467213` built the CLI, Native Messaging host and Tauri NSIS installer, passed engine/host tests, and installed/smoke-launched the app on `windows-latest`. Interactive browser handoff and Windows 10/11 user-machine compatibility remain unverified. | `public-doc` / `implemented-partial` (CI smoke evidence; user-machine verification open) |
 | 4.2 | Platform: macOS / Linux | IDM does not publicly offer macOS or Linux versions. | Linux is the Phase 1 prototype platform. macOS is not planned in Phases 1–3 unless a separate decision adds it (Tauri could make it feasible, but it is not committed). | `public-doc` / `planned` (Linux Phase 1 only) |
-| 4.3 | Desktop UI | IDM has a mature native Windows UI with download list, progress, categories, scheduler. | Tauri 2 + React/TypeScript/Tailwind shell starts the real CLI and presents persisted progress. Linux build/tests and Windows CI installer/start smoke pass. GUI end-to-end download testing, queue/scheduler, pause/cancel and statistics remain incomplete. | `public-doc` / `implemented-partial` (CI smoke verified; interactive workflow open) |
+| 4.3 | Desktop UI | IDM has a mature native Windows UI with download list, progress, categories, scheduler. | Tauri 2 + React/TypeScript/Tailwind shell starts/resumes the real CLI, shows persisted progress and exposes control-file pause/cancel. Linux tests and Windows CI installer/start smoke pass. The latest control actions await Windows CI; GUI-driven download, queue/scheduler and statistics remain incomplete. | `public-doc` / `implemented-partial` (CI smoke verified; interactive workflow open) |
 | 4.4 | Installer / auto-update / code signing | IDM ships as a commercial Windows installer with updates. | Phase 3 work: packaging format undecided (D-11: MSI vs MSIX vs portable ZIP), signing undecided, auto-update undecided (D-12). Nothing here is claimed as done. | `public-doc` / `planned` (Phase 3) |
 | 4.5 | Multilingual UI | IDM publicly offers multiple UI languages. | Phase 1: English UI strings. Localisation (including Arabic, given this project's user context) is Phase 3 polish, not Phase 1. | `public-doc` / `planned` (Phase 3) |
 | 4.6 | System integration: shutdown on completion, prevent sleep | IDM publicly offers shutdown / sleep options on completion. | Linux prototype: `systemd-inhibit` if available (`planned`, `not-verified` on this VM). Windows power APIs: Phase 2, `not-verified`. Never force shutdown without user confirmation. | `public-doc` / `planned` (Phase 2) |
@@ -132,8 +132,8 @@ column says "Phase 2/3" is a gap in Phase 1, stated plainly.
 
 **What Phase 1 explicitly does NOT match (gaps, not hidden):**
 
-- No Windows desktop application/installer, signing, or auto-update; the Windows CI-tested artifact at present is only the CLI (4.1, 4.4).
-- Tauri desktop source exists (4.3), but Windows installer/startup and browser handoff are still unverified; queue/scheduler and pause/cancel remain incomplete.
+- Windows CI has built, installed and smoke-started the Tauri NSIS application; interactive Windows 10/11 compatibility, signing and auto-update remain unverified (4.1, 4.4).
+- Tauri pause/cancel and Resume controls are implemented and Linux-tested; the newest controls still await Windows CI, while browser handoff, queue and scheduler remain incomplete (4.3).
 - No automatic download capture, no site grabber, no clipboard
   monitoring (3.2, 5.2, 3.4).
 - No dynamic segmentation, no fMP4 remux, no live-playlist capture

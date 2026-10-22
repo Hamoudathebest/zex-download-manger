@@ -693,10 +693,10 @@ A media job is a normal download job (§9) plus:
 ## 7. Desktop UI (Tauri 2 + React / TypeScript / Tailwind — partial implementation)
 
 > **Current status:** `ui/src-tauri/` provides a Tauri 2 shell and backend
-> commands to start the Rust CLI, list persisted jobs, and register the
+> commands to start/resume/pause/cancel the Rust CLI, list persisted jobs, and register the
 > Chromium Native Messaging host. The frontend starts downloads and polls
 > observed progress. Linux compile/tests pass. The Windows app, NSIS
-> installation/startup, registry flow, pause/cancel, queue/scheduler and
+> installation/startup, registry flow, latest pause/cancel controls, queue/scheduler and
 > live browser handoff have not yet passed end-to-end verification. This
 > section's remaining design points are future work, not shipped behavior.
 
@@ -737,11 +737,12 @@ A media job is a normal download job (§9) plus:
 
 ### 7.3 Tauri command surface (partial)
 
-Implemented commands are `start_download`, `list_downloads`, and
-`pair_chromium_extensions`. They validate input, invoke the packaged
-Rust CLI, and persist job state. The full §3.6 command contract
-(`download_pause`, `download_cancel`, queue/scheduler operations and
-event subscriptions) remains unimplemented.
+Implemented commands are `start_download`, `resume_download`,
+`pause_download`, `cancel_download`, `list_downloads`, and
+`pair_chromium_extensions`. They invoke the packaged Rust CLI, use
+checkpoint/control files for lifecycle actions, and persist job state.
+Queue/scheduler operations and event subscriptions from the full §3.6
+contract remain unimplemented.
 
 ### 7.4 UI ↔ engine sync and offline behaviour
 

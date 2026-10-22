@@ -28,6 +28,8 @@ struct DownloadItem {
     progress_percent: Option<f64>,
     destination: String,
     error: Option<String>,
+    #[serde(default)]
+    resumable: bool,
 }
 
 #[derive(Serialize)]
@@ -110,15 +112,24 @@ impl AppState {
         }
         let mut changed = false;
         for item in &mut *downloads {
-            if item.status == "active" && Path::new(&item.destination).is_file() {
+            if matches!(item.status.as_str(), "active" | "interrupted" | "failed")
+                && Path::new(&item.destination).is_file()
+            {
                 if let Ok(metadata) = fs::metadata(&item.destination) {
                     item.status = "completed".to_string();
                     item.size_bytes = Some(metadata.len());
                     item.downloaded_bytes = Some(metadata.len());
                     item.progress_percent = Some(100.0);
                     item.error = None;
+                    item.resumable = false;
                     changed = true;
                 }
+            }
+            let resumable = matches!(item.status.as_str(), "paused" | "interrupted" | "failed")
+                && has_resume_checkpoint(&item.destination);
+            if item.resumable != resumable {
+                item.resumable = resumable;
+                changed = true;
             }
         }
         if changed {
@@ -179,21 +190,8 @@ fn start_download(
     fs::create_dir_all(&directory)
         .map_err(|error| format!("could not create Downloads folder: {error}"))?;
     let destination = unused_destination(&directory, &filename)?;
-    let engine = resolve_engine_binary(&app, if cfg!(windows) { "dm.exe" } else { "dm" })?;
-    if !engine.is_file() {
-        return Err("The packaged `dm` download engine is missing.".to_string());
-    }
-
-    let mut child = Command::new(&engine)
-        .arg(&url)
-        .arg(&destination)
-        .arg("--connections")
-        .arg("4")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| format!("could not start the download engine: {error}"))?;
+    let control_file = control_file_path(&destination);
+    let mut child = engine_command(&app, &url, &destination, false, &control_file)?;
 
     let id = format!("{}-{}", std::process::id(), now_millis());
     let item = DownloadItem {
@@ -209,6 +207,7 @@ fn start_download(
         progress_percent: None,
         destination: destination.to_string_lossy().into_owned(),
         error: None,
+        resumable: false,
     };
 
     {
@@ -224,6 +223,154 @@ fn start_download(
         }
     }
 
+    monitor_engine(child, id, Arc::clone(&state))?;
+
+    Ok(item)
+}
+
+#[tauri::command]
+fn resume_download(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<DownloadItem, String> {
+    let item = {
+        let downloads = state
+            .downloads
+            .lock()
+            .map_err(|_| "download state is unavailable".to_string())?;
+        downloads
+            .iter()
+            .find(|item| item.id == id)
+            .cloned()
+            .ok_or_else(|| "download not found".to_string())?
+    };
+    if !matches!(item.status.as_str(), "paused" | "interrupted" | "failed")
+        || !has_resume_checkpoint(&item.destination)
+    {
+        return Err("This download has no resumable checkpoint.".to_string());
+    }
+
+    let control_file = control_file_path(Path::new(&item.destination));
+    let _ = fs::remove_file(&control_file);
+    let mut child = engine_command(
+        &app,
+        &item.url,
+        Path::new(&item.destination),
+        true,
+        &control_file,
+    )?;
+    {
+        let mut downloads = state
+            .downloads
+            .lock()
+            .map_err(|_| "download state is unavailable".to_string())?;
+        let current = downloads
+            .iter_mut()
+            .find(|current| current.id == id)
+            .ok_or_else(|| "download disappeared before resume".to_string())?;
+        current.status = "active".to_string();
+        current.error = None;
+        current.resumable = false;
+        let snapshot = downloads.clone();
+        if let Err(error) = state.persist_locked(&snapshot) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    }
+    monitor_engine(child, id, Arc::clone(&state))?;
+    Ok(item)
+}
+
+#[tauri::command]
+fn pause_download(state: State<'_, Arc<AppState>>, id: String) -> Result<String, String> {
+    let item = state
+        .downloads
+        .lock()
+        .map_err(|_| "download state is unavailable".to_string())?
+        .iter()
+        .find(|item| item.id == id)
+        .cloned()
+        .ok_or_else(|| "download not found".to_string())?;
+    if item.status != "active" {
+        return Err("Only an active download can be paused.".to_string());
+    }
+    fs::write(control_file_path(Path::new(&item.destination)), "pause\n")
+        .map_err(|error| format!("could not request pause: {error}"))?;
+    Ok("Pause requested; the engine will save a checkpoint after its current chunk.".to_string())
+}
+
+#[tauri::command]
+fn cancel_download(state: State<'_, Arc<AppState>>, id: String) -> Result<String, String> {
+    let mut downloads = state
+        .downloads
+        .lock()
+        .map_err(|_| "download state is unavailable".to_string())?;
+    let index = downloads
+        .iter()
+        .position(|item| item.id == id)
+        .ok_or_else(|| "download not found".to_string())?;
+    let item = downloads[index].clone();
+    let destination = Path::new(&item.destination);
+    let control_file = control_file_path(destination);
+
+    if item.status == "active" {
+        fs::write(&control_file, "cancel\n")
+            .map_err(|error| format!("could not request cancellation: {error}"))?;
+        return Ok("Cancellation requested; the engine will remove its partial file.".to_string());
+    }
+    if !matches!(item.status.as_str(), "paused" | "interrupted" | "failed") {
+        return Err("Only active or incomplete downloads can be cancelled.".to_string());
+    }
+
+    let _ = fs::remove_file(part_file_path(destination));
+    let _ = fs::remove_file(checkpoint_file_path(destination));
+    let _ = fs::remove_file(&control_file);
+    let item = &mut downloads[index];
+    item.status = "cancelled".to_string();
+    item.error = None;
+    item.resumable = false;
+    let snapshot = downloads.clone();
+    state.persist_locked(&snapshot)?;
+    Ok("Download cancelled; its partial file and checkpoint were removed.".to_string())
+}
+
+fn engine_command(
+    app: &AppHandle,
+    url: &str,
+    destination: &Path,
+    resume: bool,
+    control_file: &Path,
+) -> Result<std::process::Child, String> {
+    let engine = resolve_engine_binary(app, if cfg!(windows) { "dm.exe" } else { "dm" })?;
+    if !engine.is_file() {
+        return Err("The packaged `dm` download engine is missing.".to_string());
+    }
+    let mut command = Command::new(engine);
+    command
+        .arg(url)
+        .arg(destination)
+        .arg("--connections")
+        .arg("4")
+        .arg("--control-file")
+        .arg(control_file);
+    if resume {
+        command.arg("--resume");
+    }
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("could not start the download engine: {error}"))
+}
+
+fn monitor_engine(
+    mut child: std::process::Child,
+    id: String,
+    state: Arc<AppState>,
+) -> Result<(), String> {
     let stderr = child
         .stderr
         .take()
@@ -232,11 +379,10 @@ fn start_download(
         .stdout
         .take()
         .ok_or_else(|| "could not read engine result".to_string())?;
-    let monitor_state = Arc::clone(&state);
     thread::spawn(move || {
         for line in BufReader::new(stderr).lines().map_while(Result::ok) {
             if let Some((done, total)) = parse_progress(&line) {
-                monitor_state.update(&id, |item| {
+                state.update(&id, |item| {
                     item.downloaded_bytes = Some(done);
                     if let Some(total) = total {
                         item.size_bytes = Some(total);
@@ -246,7 +392,7 @@ fn start_download(
                 });
             } else if line.starts_with("error:") {
                 let safe_error = line.chars().take(500).collect::<String>();
-                monitor_state.update(&id, |item| item.error = Some(safe_error));
+                state.update(&id, |item| item.error = Some(safe_error));
             }
         }
 
@@ -254,9 +400,10 @@ fn start_download(
         let mut output = String::new();
         let _ = stdout.read_to_string(&mut output);
         let result = child.wait();
-        monitor_state.update(&id, |item| match result {
+        state.update(&id, |item| match result {
             Ok(status) if status.success() => {
                 item.status = "completed".to_string();
+                item.resumable = false;
                 if let Ok(metadata) = fs::metadata(&item.destination) {
                     item.size_bytes = Some(metadata.len());
                     item.downloaded_bytes = Some(metadata.len());
@@ -264,20 +411,56 @@ fn start_download(
                 }
                 item.error = None;
             }
+            Ok(status) if status.code() == Some(130) => {
+                item.status = "paused".to_string();
+                item.resumable = has_resume_checkpoint(&item.destination);
+                item.error = None;
+            }
+            Ok(status) if status.code() == Some(131) => {
+                item.status = "cancelled".to_string();
+                item.resumable = false;
+                item.error = None;
+            }
             Ok(status) => {
                 item.status = "failed".to_string();
+                item.resumable = has_resume_checkpoint(&item.destination);
                 if item.error.is_none() {
                     item.error = Some(format!("download engine exited with {status}"));
                 }
             }
             Err(error) => {
                 item.status = "failed".to_string();
+                item.resumable = has_resume_checkpoint(&item.destination);
                 item.error = Some(format!("could not observe download engine exit: {error}"));
             }
         });
     });
+    Ok(())
+}
 
-    Ok(item)
+fn has_resume_checkpoint(destination: &str) -> bool {
+    let path = Path::new(destination);
+    part_file_path(path).is_file() && checkpoint_file_path(path).is_file()
+}
+
+fn sidecar_path(destination: &Path, suffix: &str) -> PathBuf {
+    let filename = destination
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("download");
+    destination.with_file_name(format!("{filename}{suffix}"))
+}
+
+fn part_file_path(destination: &Path) -> PathBuf {
+    sidecar_path(destination, ".part")
+}
+
+fn checkpoint_file_path(destination: &Path) -> PathBuf {
+    sidecar_path(destination, ".checkpoint.json")
+}
+
+fn control_file_path(destination: &Path) -> PathBuf {
+    sidecar_path(destination, ".control")
 }
 
 #[tauri::command]
@@ -449,6 +632,7 @@ fn unused_destination(directory: &Path, filename: &str) -> Result<PathBuf, Strin
         if !candidate.exists()
             && !directory.join(format!("{name}.part")).exists()
             && !directory.join(format!("{name}.checkpoint.json")).exists()
+            && !directory.join(format!("{name}.control")).exists()
         {
             return Ok(candidate);
         }
@@ -491,6 +675,8 @@ fn load_state(path: PathBuf) -> Arc<AppState> {
             item.error =
                 Some("The desktop session ended before this download finished.".to_string());
         }
+        item.resumable = matches!(item.status.as_str(), "paused" | "interrupted" | "failed")
+            && has_resume_checkpoint(&item.destination);
     }
     Arc::new(AppState {
         state_path: path,
@@ -513,6 +699,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             list_downloads,
             start_download,
+            resume_download,
+            pause_download,
+            cancel_download,
             pair_chromium_extensions
         ])
         .run(tauri::generate_context!())
@@ -521,7 +710,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_progress, safe_filename, AppState, DownloadItem};
+    use super::{load_state, parse_progress, safe_filename, AppState, DownloadItem};
     use std::fs;
     use std::sync::Mutex;
 
@@ -539,6 +728,7 @@ mod tests {
             progress_percent: None,
             destination: destination.to_string(),
             error: None,
+            resumable: false,
         }
     }
 
@@ -588,6 +778,30 @@ mod tests {
         assert_eq!(persisted.len(), 2);
         assert!(persisted.iter().any(|entry| entry.id == "native-job"));
         assert!(persisted.iter().any(|entry| entry.id == "desktop-job"));
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn interrupted_download_is_resumable_only_with_both_checkpoint_files() {
+        let directory =
+            std::env::temp_dir().join(format!("zex-tauri-resume-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).unwrap();
+        let destination = directory.join("fixture.bin");
+        let record = item("resume-job", "active", &destination.to_string_lossy());
+        let state_path = directory.join("downloads.json");
+        fs::write(&state_path, serde_json::to_vec(&[record]).unwrap()).unwrap();
+
+        let state = load_state(state_path);
+        {
+            let downloads = state.downloads.lock().unwrap();
+            assert_eq!(downloads[0].status, "interrupted");
+            assert!(!downloads[0].resumable);
+        }
+        fs::write(directory.join("fixture.bin.part"), b"partial").unwrap();
+        fs::write(directory.join("fixture.bin.checkpoint.json"), b"{}\n").unwrap();
+        let downloads = state.refresh().unwrap();
+        assert!(downloads[0].resumable);
         fs::remove_dir_all(directory).unwrap();
     }
 

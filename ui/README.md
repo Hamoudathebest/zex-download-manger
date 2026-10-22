@@ -15,9 +15,10 @@ The Tauri shell, NSIS bundle, and install/start smoke test passed on the
 GitHub `windows-latest` runner. This is runner validation, not a claim of
 Windows 10/11 user-machine or interactive browser compatibility.
 
-Pause/cancel controls, download queue and scheduler are not implemented
-in the desktop shell yet. The Tauri UI reports those limits rather than
-simulating actions. DRM circumvention is not implemented.
+Checkpointed interrupted/failed downloads can be resumed from the Active
+Downloads view. Pause/cancel are implemented through engine control files
+and pass Linux tests; Windows CI verification is pending. Download queue
+and scheduler are not implemented yet. DRM circumvention is not implemented.
 
 ## Run it (exact commands)
 

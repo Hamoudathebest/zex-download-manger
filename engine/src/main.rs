@@ -28,7 +28,7 @@
 //!   destination is never created from unverified bytes.
 //!
 //! Exit codes: 0 success, 1 error / hash mismatch, 2 usage error,
-//! 130 paused via Ctrl-C (checkpoint saved, resumable).
+//! 130 paused (checkpoint saved, resumable), 131 cancelled (partial removed).
 
 mod checkpoint;
 mod throttle;
@@ -59,6 +59,7 @@ struct Args {
     restart: bool,
     sha256: Option<String>,
     checkpoint_path: Option<PathBuf>,
+    control_file: Option<PathBuf>,
     max_retries: u32,
 }
 
@@ -71,6 +72,7 @@ fn usage() -> String {
      \x20 --restart               Discard any .part/checkpoint and start fresh\n\
      \x20 --sha256 HEX            Expected SHA-256 (checked before rename)\n\
      \x20 --checkpoint PATH       Checkpoint path (default <DEST>.checkpoint.json)\n\
+     \x20 --control-file PATH     Poll for pause/cancel commands\n\
      \x20 --max-retries N         Retries per segment (default 5)\n\
      \x20 --help, -h              Show this help\n\
      \nPause: press Ctrl-C. Progress is saved to the checkpoint and the\n\
@@ -105,6 +107,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     let mut restart = false;
     let mut sha256 = None;
     let mut checkpoint_path = None;
+    let mut control_file = None;
     let mut max_retries = 5u32;
     let mut i = 0;
     while i < argv.len() {
@@ -129,6 +132,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             "--throttle" | "-t" => throttle = parse_rate(&take(&mut i)?)?,
             "--sha256" => sha256 = Some(take(&mut i)?),
             "--checkpoint" => checkpoint_path = Some(PathBuf::from(take(&mut i)?)),
+            "--control-file" => control_file = Some(PathBuf::from(take(&mut i)?)),
             "--max-retries" => {
                 max_retries = take(&mut i)?
                     .parse::<u32>()
@@ -146,6 +150,9 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             s if s.starts_with("--sha256=") => sha256 = Some(s["--sha256=".len()..].to_string()),
             s if s.starts_with("--checkpoint=") => {
                 checkpoint_path = Some(PathBuf::from(&s["--checkpoint=".len()..]));
+            }
+            s if s.starts_with("--control-file=") => {
+                control_file = Some(PathBuf::from(&s["--control-file=".len()..]));
             }
             s if s.starts_with('-') => return Err(format!("unknown option '{}'", s)),
             s => {
@@ -169,6 +176,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         restart,
         sha256,
         checkpoint_path,
+        control_file,
         max_retries,
     })
 }
@@ -268,6 +276,7 @@ struct Shared {
     throttle: Arc<Throttle>,
     paused: AtomicBool,
     aborted: AtomicBool,
+    cancelled: AtomicBool,
 }
 
 impl Shared {
@@ -486,6 +495,9 @@ async fn run(args: Args) -> Result<i32, String> {
     if args.restart {
         let _ = tokio::fs::remove_file(&part_path).await;
         let _ = tokio::fs::remove_file(&ckpt_path).await;
+        if let Some(control_file) = &args.control_file {
+            let _ = tokio::fs::remove_file(control_file).await;
+        }
         println!("restart: discarded existing .part/checkpoint");
     }
 
@@ -632,6 +644,7 @@ async fn run(args: Args) -> Result<i32, String> {
         throttle: Throttle::new(args.throttle),
         paused: AtomicBool::new(false),
         aborted: AtomicBool::new(false),
+        cancelled: AtomicBool::new(false),
     });
     // Wire the ctrlc flag into Shared: poll it via a tiny task.
     let shared_paused_flag = paused.clone();
@@ -645,6 +658,31 @@ async fn run(args: Args) -> Result<i32, String> {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
     });
+
+    if let Some(control_file) = args.control_file.clone() {
+        let control_shared = shared.clone();
+        tokio::spawn(async move {
+            loop {
+                if control_shared.paused.load(Ordering::SeqCst)
+                    || control_shared.aborted.load(Ordering::SeqCst)
+                {
+                    break;
+                }
+                match tokio::fs::read_to_string(&control_file).await {
+                    Ok(command) if command.trim() == "pause" => {
+                        control_shared.paused.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    Ok(command) if command.trim() == "cancel" => {
+                        control_shared.cancelled.store(true, Ordering::SeqCst);
+                        control_shared.aborted.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    _ => tokio::time::sleep(Duration::from_millis(50)).await,
+                }
+            }
+        });
+    }
 
     // Initial checkpoint so an immediate Ctrl-C still has state.
     shared.save(true).await;
@@ -743,6 +781,16 @@ async fn run(args: Args) -> Result<i32, String> {
     progress_task.abort();
     let _ = progress_task.await;
 
+    if shared.cancelled.load(Ordering::SeqCst) {
+        shared.save(true).await;
+        let _ = tokio::fs::remove_file(&part_path).await;
+        let _ = tokio::fs::remove_file(&ckpt_path).await;
+        if let Some(control_file) = &args.control_file {
+            let _ = tokio::fs::remove_file(control_file).await;
+        }
+        eprintln!("CANCELLED: removed partial download and checkpoint");
+        return Ok(131);
+    }
     if shared.paused.load(Ordering::SeqCst) || any_paused {
         shared.save(true).await;
         let done = shared.ckpt.lock().await.total_done();
@@ -808,6 +856,9 @@ async fn run(args: Args) -> Result<i32, String> {
         .await
         .map_err(|e| format!("atomic rename failed: {}", e))?;
     let _ = tokio::fs::remove_file(&ckpt_path).await;
+    if let Some(control_file) = &args.control_file {
+        let _ = tokio::fs::remove_file(control_file).await;
+    }
     println!(
         "done: {} ({} bytes in {:.2}s, avg {:.1} KiB/s, sha256 {})",
         dest.display(),

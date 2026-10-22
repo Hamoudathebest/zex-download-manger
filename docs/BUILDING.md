@@ -2,8 +2,10 @@
 
 > **Current status (2026-10-22):** the first Windows Actions run compiled
 > the standalone CLI and passed Rust unit tests, then failed an integration
-> test due to Windows SIGINT semantics. That test is fixed. Workflows now
-> also build, install and launch the Tauri app; rerun evidence is pending.
+> test due to Windows SIGINT semantics. That test is fixed. The second
+> run built the Tauri/NSIS installer and passed engine/host tests, but
+> the install smoke test used a path that was not created. The test now
+> uses a no-space install path; rerun evidence is pending.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >

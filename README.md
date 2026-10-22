@@ -122,7 +122,9 @@ app, is pending; its artifacts are not yet verified.
   requests and manual runs compile/test the Rust engine and Native
   Messaging host, lint/build the UI, package the Tauri NSIS installer,
   run an install/start smoke test, test media parsing, and upload the
-  actual Windows executables as a short-lived CI artifact.
+  actual Windows executables as a short-lived CI artifact. The latest
+  run passed engine/host tests and built the installer, but the smoke
+  test's install-path assumption failed; the corrected rerun is pending.
 - `.github/workflows/release.yml` — tags `v*.*.*` build and test the
   CLI/native-host binaries, Tauri desktop app and NSIS installer, then
   publish a **pre-release** with a CLI ZIP, Chromium extension ZIP,
@@ -138,12 +140,12 @@ account has write access and PR #1 is open against `main`.
 
 ## Honest limits (Phase 1)
 
-- The Tauri application and NSIS installer compile locally on Linux;
-  Linux backend tests pass. Windows CI previously compiled the CLI and
-  passed Rust unit tests, but its integration run found a Windows test
-  signal bug. The fix and Tauri install/start smoke test await the next
-  Windows run. Do not claim Windows 10/11 compatibility until that and
-  interactive browser tests pass.
+- The Tauri application source builds and tests locally on Linux; the
+  NSIS installer is built only on Windows CI. Windows CI has passed
+  engine/host integration tests and built the installer, but the install
+  smoke test failed to find the configured path. The corrected rerun is
+  pending. Do not claim Windows 10/11 compatibility until installer/startup
+  and interactive browser tests pass.
 - No IDM reverse engineering: no authorised IDM binary was
   available, and no proprietary code is included. The feature
   matrix in `docs/feature-matrix.md` labels every row

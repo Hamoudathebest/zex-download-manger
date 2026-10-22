@@ -114,7 +114,7 @@ on a real Windows machine and browser — that is a Phase 2 test.
 
 ## Releases
 
-Windows Actions run `39848492844` passed: Rust and loopback tests,
+Windows Actions run `39850739198` passed: Rust and loopback tests,
 Native Messaging protocol tests, Tauri build, NSIS install/start smoke,
 media tests, extension syntax checks, and artifact upload. The real PE
 artifacts and SHA-256 values are recorded in `TEST_REPORT.md`.

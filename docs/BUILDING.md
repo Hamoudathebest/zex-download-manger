@@ -1,6 +1,6 @@
 # Building — Linux prototype vs. Windows (GitHub Actions)
 
-> **Current status (2026-10-22):** Windows run `39848492844` passed the
+> **Current status (2026-10-22):** Windows run `39850739198` passed the
 > Rust, engine integration, Native Messaging, Tauri build, NSIS install/start
 > smoke, media, and extension syntax checks. This proves the `windows-latest`
 > runner path only, not Windows 10/11 user-machine compatibility.
@@ -62,7 +62,7 @@ artefact. Do not label prototype output as a release.
    install/start smoke test.
 3. **Artifact:** `dm-windows-x64-<commit>` contains CLI, Native Messaging
    host and NSIS desktop installer executables. All are unsigned.
-4. Workflow run `39848492844` passed the build and installer/startup
+4. Workflow run `39850739198` passed the build and installer/startup
    smoke. Treat it as runner validation only; a successful runner build
    does not prove interactive Windows 10/11 compatibility.
 

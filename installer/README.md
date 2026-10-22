@@ -32,7 +32,7 @@ The output is `installer/download-manager-setup.exe`.
 ## Tauri desktop installer
 
 The application NSIS bundle is configured in `ui/src-tauri/tauri.conf.json`.
-Windows run `39845367656` built it, silently installed it, and verified the
+Windows run `39848492844` built it, silently installed it, and verified the
 desktop process remained running during the startup smoke test. Interactive
 Windows 10/11 tests and browser pairing remain outstanding.
 

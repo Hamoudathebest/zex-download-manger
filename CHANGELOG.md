@@ -8,24 +8,24 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 
 - Open-source pack: MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
   `THIRD_PARTY_NOTICES.md`, and this changelog.
-- GitHub access diagnosis (`docs/github-access-diagnosis.md`):
-  the push to `Hamoudathebest/zex-download-manger` is blocked by a
-  missing GitHub App installation on the repository owner's account
-  (see that document for the exact fix). No code was pushed yet.
-- Real CI/CD: `.github/workflows/windows-build.yml` rewritten to
-  actually build and test the Rust engine, the UI, and the media
-  parser on `windows-latest`; new `.github/workflows/release.yml`
-  for tag-triggered releases with portable and extension artefacts
-  and SHA-256 checksums.
+- Published audit branch `engineering/audit-windows-ci` and pull
+  request #1 to `main`; access and commit publication are verified.
+- Windows CI and development pre-release workflows build the CLI,
+  Native Messaging host, Tauri UI/NSIS installer, extension package,
+  and checksums. First Windows CI run found the test-08 SIGINT issue;
+  the fix and a Tauri startup smoke test are in the pending rerun.
+- Tauri 2 desktop source now starts the real Rust CLI, persists local
+  download records, displays engine progress, and provides per-user
+  Chromium Native Messaging registration. The live Windows workflow,
+  installer and browser handshake are not yet verified.
+- Native Messaging host protocol and shared download-state persistence
+  are implemented and Linux-tested. Firefox pairing remains incomplete.
 - Icon generation: `tools/generate-icons.py` (standard library only)
   regenerates the extension PNG icons inside CI, because the
   connector snapshot-push route accepts text files only.
-- Not yet shipped: a Windows installer (.exe via NSIS) and an MSI
-  (via WiX) are documented as planned, not built, because no
-  installer project exists yet. A Firefox extension package is
-  likewise planned, not shipped, because no Firefox-compatible
-  manifest variant exists yet. These are not claimed in any release
-  until they actually build.
+- MSI packaging is not implemented. Windows installer output is pending
+  a successful Windows CI build/install/launch run. No Firefox extension
+  release package or live browser proof is claimed.
 
 ## [0.1.0] — 2026-10-21 (Phase 1 foundation)
 

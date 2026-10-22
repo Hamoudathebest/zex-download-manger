@@ -19,6 +19,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
 
       - uses: actions/setup-node@v4
         with:
@@ -33,6 +34,8 @@ jobs:
       - name: Test and build Rust engine
         working-directory: engine
         run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --locked -- -D warnings
           cargo test --locked
           cargo build --release --locked
 
@@ -40,11 +43,35 @@ jobs:
         working-directory: engine/tests
         run: python -m unittest -v test_engine
 
-      - name: Test and build UI prototype
+      - name: Test Native Messaging host framing
+        working-directory: engine/tests
+        run: python -m unittest -v test_native_host
+
+      - name: Build Tauri desktop application and NSIS installer
         working-directory: ui
         run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
           npm ci
-          npm run build
+          npm run lint
+          npm run tauri:build
+
+      - name: Install and launch Windows application smoke test
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem ui/src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          if (-not $installer) { throw 'Tauri NSIS installer was not produced.' }
+          $installDir = Join-Path $env:RUNNER_TEMP 'ZEX Download Manager Smoke Test'
+          $installProcess = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=`"$installDir`"") -PassThru -Wait
+          if ($installProcess.ExitCode -ne 0) { throw "NSIS installer exited with $($installProcess.ExitCode)." }
+          $app = Get-ChildItem -Path $installDir -Filter '*.exe' -File | Where-Object { $_.Name -notin @('dm.exe', 'dm-native-host.exe') } | Select-Object -First 1
+          if (-not $app) { throw 'Installed Tauri application executable was not found.' }
+          $process = Start-Process -FilePath $app.FullName -PassThru
+          Start-Sleep -Seconds 8
+          $process.Refresh()
+          if ($process.HasExited) { throw "Installed desktop app exited during startup (exit $($process.ExitCode))." }
+          Stop-Process -Id $process.Id -Force
 
       - name: Test media parser and FFmpeg builder
         working-directory: media
@@ -66,11 +93,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Copy-Item engine/target/release/dm.exe artifacts/dm-windows-x64.exe
-          Get-FileHash artifacts/dm-windows-x64.exe -Algorithm SHA256 | Format-List
+          Copy-Item engine/target/release/dm-native-host.exe artifacts/dm-native-host-windows-x64.exe
+          Copy-Item (Get-ChildItem ui/src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1).FullName artifacts/zex-download-manager-setup-windows-x64.exe
+          Get-FileHash artifacts/*.exe -Algorithm SHA256 | Format-List
 
       - uses: actions/upload-artifact@v4
         with:
           name: dm-windows-x64-${{ github.sha }}
-          path: artifacts/dm-windows-x64.exe
+          path: artifacts/*.exe
           if-no-files-found: error
           retention-days: 14

@@ -56,15 +56,17 @@ impl Segment {
             None => false, // unknown-length streams are complete only at EOF
         }
     }
+}
 
-    /// Next byte offset to request, or None when complete.
-    pub fn next_offset(&self) -> Option<u64> {
-        if self.is_complete() {
-            None
-        } else {
-            Some(self.start + self.done)
-        }
-    }
+pub struct CheckpointOptions<'a> {
+    pub url: &'a str,
+    pub destination: &'a Path,
+    pub part_path: &'a Path,
+    pub total_size: Option<u64>,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
+    pub accept_ranges: bool,
+    pub connections: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,16 +84,17 @@ pub struct Checkpoint {
 }
 
 impl Checkpoint {
-    pub fn new(
-        url: &str,
-        destination: &Path,
-        part_path: &Path,
-        total_size: Option<u64>,
-        etag: Option<String>,
-        last_modified: Option<String>,
-        accept_ranges: bool,
-        connections: usize,
-    ) -> Self {
+    pub fn new(options: CheckpointOptions<'_>) -> Self {
+        let CheckpointOptions {
+            url,
+            destination,
+            part_path,
+            total_size,
+            etag,
+            last_modified,
+            accept_ranges,
+            connections,
+        } = options;
         let segments = match total_size {
             Some(total) if total > 0 => split_segments(total, connections),
             _ => vec![Segment {
@@ -129,8 +132,7 @@ impl Checkpoint {
 
     /// Save atomically (temp file + rename in the same directory).
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         let tmp = path.with_extension("tmp");
         fs::write(&tmp, json.as_bytes())?;
         fs::rename(&tmp, path)?;

@@ -97,7 +97,11 @@ class UnknownHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/octet-stream")
         # Deliberately NO Content-Length and NO Accept-Ranges.
         self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # The range probe deliberately drops this ignored-Range response.
+            pass
 
 
 class EngineTests(unittest.TestCase):
@@ -252,9 +256,12 @@ class EngineTests(unittest.TestCase):
         proc = subprocess.Popen(
             [DM_BIN, self.file_url, dest, "--connections", "2",
              "--throttle", "256k"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
         time.sleep(1.5)
-        proc.send_signal(signal.SIGINT)
+        proc.send_signal(
+            signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
         proc.communicate(timeout=30)
         self.assertEqual(proc.returncode, 130)
         with open(ckpt) as f:

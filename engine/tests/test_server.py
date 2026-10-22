@@ -29,6 +29,14 @@ class RangeRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):  # keep test output clean
         pass
 
+    def handle(self):
+        # Test clients intentionally abort sockets during pause/error cases.
+        # Windows reports these as ConnectionAbortedError as well as resets.
+        try:
+            super().handle()
+        except ConnectionError:
+            pass
+
     def _is_no_range(self, path):
         return path == "/no-range.bin"
 
@@ -98,7 +106,7 @@ class RangeRequestHandler(BaseHTTPRequestHandler):
                         break
                     self.wfile.write(chunk)
                     remaining -= len(chunk)
-        except (BrokenPipeError, ConnectionResetError):
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             # Client went away mid-body (e.g. error-path test). Not a
             # server failure; swallow so test output stays clean.
             pass

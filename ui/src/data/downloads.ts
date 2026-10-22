@@ -1,15 +1,16 @@
+import { invoke } from '@tauri-apps/api/core'
+
 /**
- * Downloads data layer — Phase 1 honesty contract.
+ * Downloads data layer. Desktop state comes from the Tauri backend; the
+ * standalone web preview only accepts a real engine-state endpoint.
  *
  * Source (a): a REAL engine checkpoint/queue file, if one is present.
- *   The prototype fetches `/engine-state.json` (same origin, served from
- *   `public/` in dev, or written there by the real engine in Phase 2).
- *   Its shape is documented in `public/engine-state.example.json`.
- *   No such file exists in Phase 1, so the fetch 404s.
+ *   The web preview fetches the optional `/engine-state.json` endpoint.
+ *   A missing endpoint stays explicitly disconnected.
  *
  * Source (b): EXPLICIT DISCONNECTED / EMPTY state.
  *   When the fetch fails, every page shows an empty list and a
- *   "Not connected to the engine" banner. Nothing is invented:
+ *   disconnected banner. Nothing is invented:
  *   no speeds, no progress percentages, no download counts are
  *   presented as real.
  *
@@ -26,6 +27,7 @@ export type DownloadStatus =
   | 'completed'
   | 'failed'
   | 'scheduled'
+  | 'interrupted'
 
 export interface DownloadItem {
   id: string
@@ -60,7 +62,25 @@ export interface DownloadsData {
 export const ENGINE_STATE_URL =
   import.meta.env.VITE_ENGINE_STATE_URL ?? '/engine-state.json'
 
+export function isDesktopRuntime(): boolean {
+  return typeof window !== 'undefined' && Reflect.has(window, '__TAURI_INTERNALS__')
+}
+
 export async function loadEngineState(signal?: AbortSignal): Promise<DownloadsData> {
+  if (isDesktopRuntime()) {
+    try {
+      const engine = await invoke<EngineState>('list_downloads')
+      return { connection: 'connected', engine, error: null }
+    } catch (err) {
+      if (signal?.aborted) return { connection: 'loading', engine: null, error: null }
+      return {
+        connection: 'disconnected',
+        engine: null,
+        error: err instanceof Error ? err.message : 'Desktop download service is unavailable.',
+      }
+    }
+  }
+
   try {
     const res = await fetch(ENGINE_STATE_URL, { signal })
     if (!res.ok) {
@@ -89,6 +109,11 @@ export async function loadEngineState(signal?: AbortSignal): Promise<DownloadsDa
       error: `Could not reach the engine state file (${ENGINE_STATE_URL}). This is the expected Phase 1 state: no live metrics are connected.`,
     }
   }
+}
+
+export async function startDesktopDownload(url: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Adding downloads requires the ZEX desktop application.')
+  await invoke('start_download', { url })
 }
 
 export function formatBytes(bytes: number | null): string {

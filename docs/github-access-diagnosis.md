@@ -1,17 +1,12 @@
 # GitHub push access — diagnosis
 
-Status (2026-10-22 VPS check): **public read access works; write access is
-not authenticated or verified.** The current CLI reports no logged-in
-GitHub account. Repository permissions and branch protection could not
-be inspected anonymously. This is the present blocker; the prior
-connector diagnosis below is historical evidence and was not
-independently revalidated from this VPS.
-
-To enable a push, authenticate on the VPS with `gh auth login` using an
-account authorized to write to this exact repository, then verify the
-identity with `gh auth status`. Do not send a token or private key in
-chat. After authorization, check branch protection and test write access
-using a temporary branch before publishing project changes.
+Status (2026-10-22 current VPS check): **authenticated write access verified.**
+GitHub CLI is logged in as `Hamoudathebest`, and repository API permissions
+include `push` and `admin`. Commit `930d810` is published on
+`engineering/audit-windows-ci`; PR #1 targets `main`. `main` has no branch
+protection configured. The release workflow token has `contents: write`.
+The initial anonymous-session findings are retained below as historical
+context only.
 
 ## Current VPS evidence
 
@@ -19,10 +14,11 @@ using a temporary branch before publishing project changes.
 | --- | --- |
 | Repository | `Hamoudathebest/zex-download-manger` |
 | Visibility/read | Public; anonymous `git ls-remote` and HTTPS clone succeeded |
-| GitHub CLI | `gh 2.97.0`; `gh auth status` says not logged in |
-| Remote write permissions | **Unknown** — no authenticated identity |
-| Branch protection / Actions release permissions | **Unknown** — not available to anonymous reads |
-| Push attempt from this VPS | None; a credential-free push test would not establish authorized access |
+| GitHub CLI | `gh 2.97.0`; authenticated as `Hamoudathebest` |
+| Remote permissions | `push`, `admin`, `maintain`, `pull`, `triage` |
+| Branch protection | `main` is not protected (GitHub API 404: no protection rules) |
+| Published branch | `engineering/audit-windows-ci` at commit `930d810452c0d5a484b9b044d024aa67039fcc24` |
+| Pull request | [#1](https://github.com/Hamoudathebest/zex-download-manger/pull/1), base `main`, open |
 
 ## Prior connector report (2026-10-21; historical, not revalidated here)
 

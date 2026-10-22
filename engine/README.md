@@ -5,8 +5,10 @@ skeleton. See "Why Rust shipped" below.
 
 ## What this is
 
-`dm`: a parallel, resumable HTTP/HTTPS download engine. Single binary,
-no runtime dependencies beyond system libc.
+`dm`: a parallel, resumable HTTP/HTTPS download engine. The crate also
+builds `dm-native-host`, a standard-input/output Native Messaging adapter
+that validates a user-selected URL and starts `dm` in the user's Downloads
+directory. These binaries do not yet form a Tauri desktop application.
 
 - HTTP/HTTPS with redirect following (max 10) and rustls TLS
 - Range detection via HEAD + `Range: bytes=0-0` probe
@@ -25,6 +27,7 @@ no runtime dependencies beyond system libc.
 
 Full design, checkpoint format, segment model and limits: [SPEC.md](SPEC.md).
 Real test outputs: [TEST_NOTES.md](TEST_NOTES.md).
+The Native Messaging frame protocol tests are in `tests/test_native_host.py`.
 
 ## Why Rust shipped (and no Python reference)
 
@@ -53,7 +56,7 @@ format (documented in SPEC.md §4).
 cd ~/workspace/download-manager/engine
 export PATH="$HOME/.cargo/bin:$PATH"   # only if rustup is not on PATH
 cargo build --release
-# binary: target/release/dm
+# binaries: target/release/dm and target/release/dm-native-host
 ```
 
 A prebuilt Linux binary is kept at `target/release/dm` (5.5 MB; the
@@ -95,11 +98,13 @@ Exit codes: `0` success, `1` error/hash mismatch/resume refused,
 |------|-----------|
 | `Cargo.toml`, `Cargo.lock` | Crate manifest + pinned dependencies |
 | `src/main.rs` | CLI, probe, segment workers, retry, progress, SHA-256, orchestration |
+| `src/native_host.rs` | Native Messaging framing, URL validation, destination selection, engine launch |
 | `src/checkpoint.rs` | Checkpoint JSON format, segment splitting |
 | `src/throttle.rs` | Shared token-bucket throttle |
 | `SPEC.md` | Design spec (this document's companion) |
 | `TEST_NOTES.md` | Real test results (sizes, hashes, timings, pass/fail) |
 | `tests/test_engine.py` | Engine integration tests (drive the real `dm` binary) |
+| `tests/test_native_host.py` | Protocol tests (drive the real `dm-native-host` binary) |
 | `tests/test_server.py`, `tests/downloader.py`, `tests/test_downloads.py`, `tests/run_tests.py` | Pre-existing sibling QA harness (not modified by the engine work; its README still says "engine-integration tests are PENDING" — that note is now stale, superseded by `test_engine.py`) |
 | `target/release/dm` | Prebuilt Linux binary |
 

@@ -35,10 +35,6 @@ impl Throttle {
         })
     }
 
-    pub fn unlimited() -> Arc<Self> {
-        Self::new(0)
-    }
-
     /// Wait until `n` bytes of budget are available, then consume them.
     pub async fn acquire(&self, n: usize) {
         if self.rate == 0 {

@@ -1,40 +1,45 @@
-# Download Manager — Desktop UI/UX Prototype (Phase 1)
+# ZEX Download Manager — UI and Tauri desktop shell
 
 React 19 + TypeScript + Vite + Tailwind CSS (v4, via `@tailwindcss/vite`).
 Hash-routed, no router dependency. Minimal dependencies on purpose.
 
-## What this is — and is not
+## Current implementation status
 
-**This is a web prototype of the desktop UI.** It runs in a browser with
-`npm run dev` / `npm run preview`. It renders layout, navigation, themes,
-and empty / disconnected states for all 10 pages.
+The React interface runs as a Vite web preview and is also embedded in a
+Tauri 2 desktop application (`src-tauri/`). In the desktop build, **Add
+download** starts the real Rust `dm` engine, the UI polls actual progress,
+and job records persist in the app-data directory. Jobs submitted through
+the Chromium Native Messaging host share that state file.
 
-**This is NOT a desktop app.** There is no Tauri shell, no native window,
-no system tray, no Windows installer, and no browser extension in this
-folder. Tauri / Windows packaging was **not built or verified here**
-(Linux VM, no Windows machine) and is explicitly **Phase 2**.
+The Tauri shell, NSIS bundle, and install/start smoke test are configured
+for Windows CI. They are not considered Windows-verified until the
+updated GitHub Actions run passes.
 
-**This is NOT a working downloader.** It starts, pauses, resumes, or
-schedules nothing. Download action buttons are disabled and labelled as
-such. No DRM circumvention is implemented or implied anywhere.
+Pause/cancel controls, download queue and scheduler are not implemented
+in the desktop shell yet. The Tauri UI reports those limits rather than
+simulating actions. DRM circumvention is not implemented.
 
 ## Run it (exact commands)
 
 ```bash
-cd ~/workspace/download-manager/ui
-npm install   # only needed once; dependencies are already installed in this VM
-npm run dev   # → http://localhost:5173 (Vite dev server)
+npm ci
+npm run dev       # web preview at http://localhost:5173
 ```
 
-Production build + local preview:
+Build the Windows desktop application from a Windows environment with the
+Rust MSVC toolchain and WebView2 available:
 
 ```bash
-npm run build    # tsc -b && vite build
-npm run preview  # serves dist/ locally
+npm ci
+cargo build --release --manifest-path ../engine/Cargo.toml
+npm run tauri:dev
+npm run tauri:build  # builds the app and NSIS installer
 ```
 
-No fallback was needed: `npm install` and the Vite build succeeded on
-this Linux VM (Node 24). See "Validation" below for the actual result.
+`tauri:build` regenerates icons, builds the frontend, and bundles the Rust
+engine plus Native Messaging host. The current Linux VPS can run the Vite
+preview and Rust tests; the product installer/startup test runs on the
+Windows Actions runner.
 
 ## Pages / routes (10, hash-routed)
 
@@ -53,21 +58,23 @@ this Linux VM (Node 24). See "Validation" below for the actual result.
 
 ## How metrics are handled — read this before trusting any number
 
-**Default state: DISCONNECTED / EMPTY.** On load the app fetches
-`/engine-state.json` (same origin; overridable via `VITE_ENGINE_STATE_URL`).
-No such file exists in Phase 1, so the fetch 404s and every page shows:
+**Web preview:** fetches `/engine-state.json` (same origin; overridable via
+`VITE_ENGINE_STATE_URL`). If no live state endpoint is configured, it stays
+disconnected and shows no invented download values.
 
-- an amber "Not connected to the download engine (Phase 1)" banner,
-- empty tables, and `—` wherever a speed, size, or percentage would go.
+**Tauri desktop:** calls the Rust backend for persisted download records.
+Progress values are updated from the real CLI progress stream; unavailable
+values stay null/blank. The state file is shared with the Native Messaging
+host so browser-submitted jobs appear in the desktop view.
+
 
 **No live speed, progress bar, or download count is ever invented.**
 `formatSpeed(null)` and `formatBytes(null)` render `—`. The statistics
 page draws **no speed-over-time chart** from invented data — it shows a
 labelled "No data" placeholder instead.
 
-**Connecting real data (engine team's job, Phase 1/2):** publish a JSON
-file at `public/engine-state.json` (dev) or at the web root (deployed)
-matching `public/engine-state.example.json`:
+The web preview endpoint shape remains documented in
+`public/engine-state.example.json`:
 
 ```json
 { "generatedAt": "…", "downloads": [ { "id", "name", "url",
@@ -113,13 +120,15 @@ fakes no live speed. Toggle it off to return to the disconnected state.
 - `src/data/downloads.ts` — data layer + honesty contract (see its header).
 - `src/data/preview.ts` — static, labelled preview rows only.
 - `src/components/ui.tsx` — banner, tables, stat cards, empty states.
+- `src-tauri/` — Tauri backend, per-user state persistence, CLI launch,
+  Windows NSIS configuration and browser Native Messaging registration.
 - `src/pages/*.tsx` — the 10 pages. `Settings.tsx` preferences are
   browser-local only and do not configure any engine.
 - `public/engine-state.example.json` — documented engine-state shape.
 
 ## Validation
 
-Run on this VM (Node v24.20.0, npm 10.9.4) — see the agent report for
-the exact outcome. If `npm run build` ever fails in your environment,
-do not claim it passed: paste the error and treat the prototype as
-unvalidated.
+On the current Linux VPS, `npm run lint`, `npm run build`, Tauri backend
+`cargo fmt`/Clippy/tests/build, and `npm run tauri:icons` passed. See the
+root `TEST_REPORT.md` for dated results. Windows NSIS installation/startup
+and live browser pairing remain pending Windows Actions evidence.

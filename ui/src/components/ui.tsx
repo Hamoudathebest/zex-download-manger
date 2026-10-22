@@ -28,11 +28,11 @@ export function ConnectionBanner({
       {preview ? (
         <p><strong>PREVIEW MODE.</strong> {PREVIEW_NOTICE} Turn it off to return to the disconnected state.</p>
       ) : connection === 'disconnected' ? (
-        <p><strong>Not connected to the download engine (Phase 1).</strong> No live speeds, progress, or download activity are shown. {error}</p>
+        <p><strong>Download engine unavailable.</strong> Live progress is shown only when the desktop service or configured engine-state endpoint responds. {error}</p>
       ) : connection === 'connected' ? (
-        <p><strong>Connected to the engine.</strong> Values below come from the real engine state file.</p>
+        <p><strong>Connected to the download engine.</strong> Values below come from the live engine state.</p>
       ) : (
-        <p>Checking for an engine state file…</p>
+        <p>Checking the download engine…</p>
       )}
       <button
         type="button"
@@ -51,7 +51,7 @@ export function EmptyState({ message }: { message: string }) {
     <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
       <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        When the engine is connected, items from its checkpoint / queue files will appear here.
+        Downloads appear here after the desktop engine reports their actual state.
       </p>
     </div>
   )
@@ -142,9 +142,7 @@ export function Card({ title, children }: { title: string; children: ReactNode }
 export function DisabledActionNote() {
   return (
     <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-      Actions that would start, pause, or cancel a real download are disabled in this Phase 1
-      prototype: there is no engine to act on. Buttons below are present for layout and
-      accessibility review only and perform no download action.
+      This control is unavailable until its corresponding engine command exists. No action is simulated.
     </p>
   )
 }

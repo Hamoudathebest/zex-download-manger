@@ -33,7 +33,7 @@
 mod checkpoint;
 mod throttle;
 
-use checkpoint::{default_checkpoint_path, default_part_path, Checkpoint};
+use checkpoint::{default_checkpoint_path, default_part_path, Checkpoint, CheckpointOptions};
 use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 use std::io::SeekFrom;
@@ -109,7 +109,7 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     let mut i = 0;
     while i < argv.len() {
         let a = &argv[i];
-        let mut take = |i: &mut usize| -> Result<String, String> {
+        let take = |i: &mut usize| -> Result<String, String> {
             *i += 1;
             argv.get(*i)
                 .cloned()
@@ -191,7 +191,6 @@ async fn probe(client: &reqwest::Client, url: &str) -> Result<Probe, String> {
     let mut total_size = None;
     let mut etag = None;
     let mut last_modified = None;
-    let mut accept_ranges = false;
 
     // HEAD first (cheap metadata). Some servers reject HEAD; that is
     // not fatal — the Range probe below is authoritative for ranges.
@@ -209,19 +208,11 @@ async fn probe(client: &reqwest::Client, url: &str) -> Result<Probe, String> {
             .get(reqwest::header::LAST_MODIFIED)
             .and_then(|v| v.to_str().ok())
             .map(|v| v.to_string());
-        if h
-            .get(reqwest::header::ACCEPT_RANGES)
-            .and_then(|v| v.to_str().ok())
-            .map(|v| v.trim() == "bytes")
-            .unwrap_or(false)
-        {
-            accept_ranges = true;
-        }
     }
 
     // Range probe: a 206 proves the server honours Range; a 200 proves
     // it does not (for this resource). Body is dropped unread.
-    match client
+    let accept_ranges = match client
         .get(url)
         .header(reqwest::header::RANGE, "bytes=0-0")
         .send()
@@ -229,7 +220,6 @@ async fn probe(client: &reqwest::Client, url: &str) -> Result<Probe, String> {
     {
         Ok(resp) => {
             if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
-                accept_ranges = true;
                 if let Some(cr) = resp
                     .headers()
                     .get(reqwest::header::CONTENT_RANGE)
@@ -246,9 +236,9 @@ async fn probe(client: &reqwest::Client, url: &str) -> Result<Probe, String> {
                         .and_then(|v| v.to_str().ok())
                         .map(|v| v.to_string());
                 }
+                true
             } else if resp.status().is_success() {
                 // Server ignored Range: single-connection fallback.
-                accept_ranges = false;
                 if total_size.is_none() {
                     total_size = resp
                         .headers()
@@ -256,16 +246,13 @@ async fn probe(client: &reqwest::Client, url: &str) -> Result<Probe, String> {
                         .and_then(|v| v.to_str().ok())
                         .and_then(|v| v.parse::<u64>().ok());
                 }
+                false
             } else {
-                return Err(format!(
-                    "probe failed: HTTP {} for {}",
-                    resp.status(),
-                    url
-                ));
+                return Err(format!("probe failed: HTTP {} for {}", resp.status(), url));
             }
         }
         Err(e) => return Err(format!("probe failed: {}", e)),
-    }
+    };
     Ok(Probe {
         total_size,
         etag,
@@ -345,7 +332,7 @@ async fn download_segment_once(
         is_ranged = true;
     }
 
-    let mut resp = req.send().await.map_err(|e| e.to_string())?;
+    let resp = req.send().await.map_err(|e| e.to_string())?;
     let status = resp.status();
     if is_ranged {
         if status == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
@@ -355,9 +342,7 @@ async fn download_segment_once(
         if status != reqwest::StatusCode::PARTIAL_CONTENT {
             // A 200 here for a partial segment means the server ignored
             // Range mid-download: accepting it would corrupt the file.
-            if status == reqwest::StatusCode::OK
-                && (single_whole_file || is_full_file_segment)
-            {
+            if status == reqwest::StatusCode::OK && (single_whole_file || is_full_file_segment) {
                 // Full-body fallback: only valid when nothing has been
                 // written yet (a resumed partial + a 200 body would be
                 // written at a non-zero offset — guarded at startup too).
@@ -448,9 +433,7 @@ async fn download_segment(
                 if attempt >= max_retries || shared.paused.load(Ordering::SeqCst) {
                     return Err(e);
                 }
-                let backoff = Duration::from_secs_f64(
-                    (0.5 * 2f64.powi(attempt as i32)).min(8.0),
-                );
+                let backoff = Duration::from_secs_f64((0.5 * 2f64.powi(attempt as i32)).min(8.0));
                 eprintln!(
                     "{} — retry {}/{} in {:.1}s",
                     e,
@@ -592,16 +575,16 @@ async fn run(args: Args) -> Result<i32, String> {
         if probe.total_size.is_none() {
             connections = 1;
         }
-        ckpt = Checkpoint::new(
-            &args.url,
-            &dest,
-            &part_path,
-            probe.total_size,
-            probe.etag.clone(),
-            probe.last_modified.clone(),
-            probe.accept_ranges,
+        ckpt = Checkpoint::new(CheckpointOptions {
+            url: &args.url,
+            destination: &dest,
+            part_path: &part_path,
+            total_size: probe.total_size,
+            etag: probe.etag.clone(),
+            last_modified: probe.last_modified.clone(),
+            accept_ranges: probe.accept_ranges,
             connections,
-        );
+        });
         // Pre-create the .part file (sparse) at the final size so
         // segment workers can seek freely.
         let f = std::fs::OpenOptions::new()
@@ -636,7 +619,9 @@ async fn run(args: Args) -> Result<i32, String> {
         let p = paused.clone();
         let _ = ctrlc::set_handler(move || {
             p.store(true, Ordering::SeqCst);
-            eprintln!("\npause requested (Ctrl-C); finishing current chunks and saving checkpoint…");
+            eprintln!(
+                "\npause requested (Ctrl-C); finishing current chunks and saving checkpoint…"
+            );
         });
     }
 
@@ -728,13 +713,7 @@ async fn run(args: Args) -> Result<i32, String> {
         let c = client.clone();
         let s = shared.clone();
         let p = part_path.clone();
-        handles.push(tokio::spawn(download_segment(
-            c,
-            s,
-            p,
-            i,
-            args.max_retries,
-        )));
+        handles.push(tokio::spawn(download_segment(c, s, p, i, args.max_retries)));
     }
 
     let mut first_error: Option<String> = None;

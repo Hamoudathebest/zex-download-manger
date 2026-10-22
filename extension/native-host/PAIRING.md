@@ -1,10 +1,12 @@
 # Pairing the extension with the desktop app (Native Messaging)
 
-> **Status: NOT tested on Windows here.** This workspace has no Windows
-> machine and no built desktop host yet. The steps below are the exact
-> procedure to verify on a real Windows + Chrome/Edge/Brave install. Do
-> not present pairing as working until the verification step at the end
-> passes on that machine.
+> **Status: host implemented; Windows/browser pairing NOT verified.** The
+> Rust `dm-native-host` binary is implemented in `engine/src/native_host.rs`
+> and protocol-tested on Linux. The current Linux checkout has not built
+> or run the Windows host. A Tauri application and NSIS build path now
+> exist, but their Windows build/install/start path and registration UI
+> have not completed CI verification. Follow the steps below and complete the
+> verification on Windows before claiming browser integration works.
 
 ## 1. Terms
 
@@ -21,26 +23,24 @@ If any one of these differs (typo, different name), Chrome reports
 
 ## 2. Install steps (Windows)
 
-1. **Install the desktop app + host executable.** (Out of scope for this
-   Phase 1 extension deliverable — no `.exe` is provided here.) Note its
-   real install path, e.g. `C:\Program Files\DownloadManagerNextGen\idm-nextgen-host.exe`.
+1. **Build/install both executables.** On Windows, `cargo build --release`
+   produces `dm.exe` and `dm-native-host.exe` in `engine/target/release/`.
+   Place both in the same per-user application directory; the host searches
+   for `dm.exe` alongside itself. The Tauri NSIS bundle is configured to
+   include both binaries, but that installer has not yet passed its Windows
+   workflow smoke test.
 2. **Load the extension unpacked** (development) in Chrome/Edge/Brave:
    `chrome://extensions` → Developer mode ON → Load unpacked →
-   select `download-manager/extension/`. Copy the extension ID shown there.
-   Once published, use the Web Store ID instead — and update step 3.
-3. **Edit the host manifest** (`native-host/com.downloadmanager.nextgen.json`):
-   - `"path"`: the real host `.exe` path from step 1.
-   - `"allowed_origins"`: `["chrome-extension://<REAL_EXTENSION_ID>/"]`
-     — replace the placeholder, keep the trailing `/`.
-   - `"name"`: must stay `com.downloadmanager.nextgen`.
-   - `"type"`: must stay `"stdio"`.
-4. **Copy the edited JSON** to its final location (the path the registry
-   will point to), e.g. `C:\Program Files\DownloadManagerNextGen\com.downloadmanager.nextgen.json`.
-5. **Register it**: edit `install-chrome.reg` so its `@=` value points at
-   that same JSON path, then double-click the `.reg` file as the current
-   user (HKCU — no admin needed). For Edge/Brave, uncomment the matching
-   section in the `.reg` file. Restart the browser after registering.
-6. **The host protocol** (for the desktop-app implementer): Native
+   select `extension/`. Copy the extension ID from each browser you want
+   to pair.
+3. **Register it**: in the installed desktop app, open Browser Integration,
+   enter the unpacked extension ID(s), and select **Register Native
+   Messaging host**. This writes the host manifest and per-user HKCU keys
+   for Chrome, Edge and Brave. For manual developer pairing, edit the host
+   manifest template's `path` and `allowed_origins` fields, copy it to a
+   stable location and import the matching registry file; never import
+   its placeholder paths.
+4. **The host protocol** (for the desktop-app implementer): Native
    Messaging framing — each message is a 4-byte little-endian length
    prefix + one UTF-8 JSON object, over stdin/stdout. Logical messages
    (see `background.js` header):
@@ -70,9 +70,9 @@ If any one of these differs (typo, different name), Chrome reports
 
 ## 4. Unpairing / uninstall
 
-- Remove the registry key(s) from `install-chrome.reg` (see the uninstall
-  note at the bottom of that file), delete the host JSON/`.exe` if the
-  app is being removed, and remove the extension from
+- The configured NSIS post-uninstall hook removes this host's per-user
+  registry keys and generated manifest while preserving download history.
+  Remove the extension separately from
   `chrome://extensions`. Revoking the extension's per-site permissions
   is done in the extension's Details → Site access, or by toggling sites
   off in the popup (which calls `chrome.permissions.remove`).

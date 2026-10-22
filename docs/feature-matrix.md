@@ -91,9 +91,9 @@ column says "Phase 2/3" is a gap in Phase 1, stated plainly.
 
 | # | Feature | IDM (public description) | Planned implementation | Basis / planned status |
 |---|---|---|---|---|
-| 4.1 | Platform: Windows | IDM is a Windows-only product (publicly). | Phase 1: Linux prototype only. Windows support is Phase 2, requiring a real Windows machine, Tauri build, and Windows testing — none of which exist in this environment. **No Windows build is claimed.** | `public-doc` / `planned` (Phase 2) |
+| 4.1 | Platform: Windows | IDM is a Windows-only product (publicly). | GitHub Actions has compiled the standalone Rust CLI on `windows-latest`; the first end-to-end integration run found one Windows test-harness signal defect, now fixed and pending rerun. No Tauri UI, installer, browser pairing or end-user Windows compatibility is established. | `public-doc` / `planned` (Windows app remains unverified) |
 | 4.2 | Platform: macOS / Linux | IDM does not publicly offer macOS or Linux versions. | Linux is the Phase 1 prototype platform. macOS is not planned in Phases 1–3 unless a separate decision adds it (Tauri could make it feasible, but it is not committed). | `public-doc` / `planned` (Linux Phase 1 only) |
-| 4.3 | Desktop UI | IDM has a mature native Windows UI with download list, progress, categories, scheduler. | Tauri 2 + React/TypeScript/Tailwind UI, `planned` for Phase 2 (no Rust toolchain on this VM, so no Tauri app exists yet — `architecture.md` §7). Phase 1 test surface is CLI + API. | `public-doc` / `planned` (Phase 2) |
+| 4.3 | Desktop UI | IDM has a mature native Windows UI with download list, progress, categories, scheduler. | Tauri 2 + React/TypeScript/Tailwind shell now starts the real CLI and presents persisted progress. Linux build/tests pass; Windows NSIS build/install/start smoke is pending CI. Queue/scheduler, pause/cancel and statistics remain incomplete. | `public-doc` / `implemented-partial` (Windows verification pending) |
 | 4.4 | Installer / auto-update / code signing | IDM ships as a commercial Windows installer with updates. | Phase 3 work: packaging format undecided (D-11: MSI vs MSIX vs portable ZIP), signing undecided, auto-update undecided (D-12). Nothing here is claimed as done. | `public-doc` / `planned` (Phase 3) |
 | 4.5 | Multilingual UI | IDM publicly offers multiple UI languages. | Phase 1: English UI strings. Localisation (including Arabic, given this project's user context) is Phase 3 polish, not Phase 1. | `public-doc` / `planned` (Phase 3) |
 | 4.6 | System integration: shutdown on completion, prevent sleep | IDM publicly offers shutdown / sleep options on completion. | Linux prototype: `systemd-inhibit` if available (`planned`, `not-verified` on this VM). Windows power APIs: Phase 2, `not-verified`. Never force shutdown without user confirmation. | `public-doc` / `planned` (Phase 2) |
@@ -132,8 +132,8 @@ column says "Phase 2/3" is a gap in Phase 1, stated plainly.
 
 **What Phase 1 explicitly does NOT match (gaps, not hidden):**
 
-- No Windows build, installer, signing, or auto-update (4.1, 4.4).
-- No Tauri desktop UI yet (4.3) — CLI/API only.
+- No Windows desktop application/installer, signing, or auto-update; the Windows CI-tested artifact at present is only the CLI (4.1, 4.4).
+- Tauri desktop source exists (4.3), but Windows installer/startup and browser handoff are still unverified; queue/scheduler and pause/cancel remain incomplete.
 - No automatic download capture, no site grabber, no clipboard
   monitoring (3.2, 5.2, 3.4).
 - No dynamic segmentation, no fMP4 remux, no live-playlist capture

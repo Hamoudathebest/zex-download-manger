@@ -13,7 +13,7 @@ not listed individually here; their licences are as declared in
 full audit of transitive licences is an open task (see the note at
 the bottom).
 
-## Rust — direct dependencies (`engine/Cargo.toml`)
+## Rust — direct dependencies (`engine/Cargo.toml` and `ui/src-tauri/Cargo.toml`)
 
 | Crate | Version used in Phase 1 | Licence (verified) |
 | --- | --- | --- |
@@ -24,6 +24,11 @@ the bottom).
 | sha2 | 0.10.9 (Cargo.toml: `0.10`) | MIT OR Apache-2.0 |
 | ctrlc | 3.5.2 (Cargo.toml: `3`) | MIT OR Apache-2.0 |
 | futures-util | 0.3.34 (Cargo.toml: `0.3`) | MIT OR Apache-2.0 |
+| fs2 | 0.4.3 (Cargo.toml: `0.4`) | MIT OR Apache-2.0 |
+| tauri | 2.12.5 (Cargo.toml: `2`) | Apache-2.0 OR MIT |
+| tauri-build | 2.7.4 (Cargo.toml: `2`) | Apache-2.0 OR MIT |
+| url | 2.5.8 (Cargo.toml: `2`) | MIT OR Apache-2.0 |
+| winreg | 0.55.0 (Windows-only; Cargo.toml: `0.55`) | MIT |
 
 ## Node — direct dependencies (`ui/package.json`)
 
@@ -40,6 +45,8 @@ the bottom).
 | @types/react-dom | ^19.3.0 | MIT |
 | @vitejs/plugin-react | ^6.1.2 | MIT |
 | oxlint | ^1.88.0 | MIT |
+| @tauri-apps/api | ^2 | Apache-2.0 OR MIT |
+| @tauri-apps/cli | ^2 | Apache-2.0 OR MIT |
 
 ## Not bundled
 

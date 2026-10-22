@@ -1,12 +1,12 @@
 # Release engineering — DevOps & release plan (Agent 10, Phase 1)
 
-> **Correction (GitHub integration work, 2026-10-21):** the
-> workflows in `.github/workflows/` have since been rewritten as
-> real build/release workflows (see `windows-build.yml` and
-> `release.yml`). They are still **unrun** — no Windows runner has
-> executed them yet — but they are no longer plan-only skeletons.
-> The "PLAN ONLY" wording elsewhere in this document is stale;
-> the workflow files themselves are authoritative.
+> **Current status (2026-10-22):** `windows-build.yml` ran on a Windows
+> runner, compiled the standalone CLI and passed Rust unit tests, then
+> failed an integration test because of an unsupported Windows SIGINT
+> call. That call is fixed. The current workflow also builds the Tauri
+> app, installs the NSIS bundle and checks startup; the revised run is
+> pending. This document remains the original release plan; root
+> `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.
 >
 > **Status: PLAN ONLY — NOT BUILT HERE.**
 >

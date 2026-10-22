@@ -5,8 +5,10 @@ from scratch, in the open, with no proprietary code.
 
 > **Honest status — read this first.** This is Phase 1, a working
 > foundation, not a finished product and not a claim of parity with
-> Internet Download Manager (IDM). No Windows `.exe` or MSI has been
-> built or run yet, there is no Tauri desktop app yet, the browser
+> Internet Download Manager (IDM). GitHub Actions compiled the
+> standalone Windows CLI, and Tauri desktop application source now exists;
+> the Tauri installer and application startup still need a successful Windows
+> workflow run. The browser
 > extension has not been live-tested, and builds are unsigned by
 > default. What does exist is real and tested on loopback: a Rust
 > download engine, a Manifest V3 extension, an HLS/DASH media
@@ -39,15 +41,15 @@ from scratch, in the open, with no proprietary code.
   merge command builder (`media/`). DRM-protected content is
   flagged and skipped, never decrypted. yt-dlp is evaluation-only
   and is not bundled.
-- **UI prototype** — React + TypeScript + Tailwind (`ui/`) with
-  all ten planned pages: Dashboard, Active, Completed, Video,
-  Queue, Scheduler, Browser Integration, History, Settings, and
-  Performance. Metrics are shown disconnected/empty until the
-  engine publishes real state — no simulated speeds.
-- **Scheduler, queue, and history** — designed in
-  `docs/architecture.md` and `docs/roadmap.md`; per-download
-  checkpointing exists in Phase 1, and multi-item queue
-  persistence is a Phase 2 task.
+- **Desktop UI (in progress)** — React + TypeScript + Tailwind in a
+  Tauri 2 shell with ten navigation views. The shell starts real CLI
+  downloads, shows observed progress and persists job records; pause,
+  cancel, queue/scheduler actions and completed-history management are
+  still incomplete.
+- **Browser companion** — a Rust Native Messaging host validates chosen
+  URLs, starts the real engine and writes shared job state. The Tauri
+  app can register Chromium extension IDs. Live browser handshake and
+  Firefox pairing remain unverified/incomplete.
 
 ## Repository layout
 
@@ -55,7 +57,7 @@ from scratch, in the open, with no proprietary code.
 engine/          Rust download engine (dm) + tests
 extension/       Manifest V3 extension + Native Messaging host
 media/           HLS/DASH parser, FFmpeg builder, fixtures, tests
-ui/              React/TypeScript/Tailwind UI prototype
+ui/              React/TypeScript UI + Tauri desktop application source
 tools/           generate-icons.py (stdlib-only PNG icon generator)
 docs/            architecture, feature matrix, roadmap, security,
                  benchmarks, release plan, GitHub access diagnosis
@@ -75,10 +77,14 @@ cargo build --release
 ./target/release/dm <URL> <DEST> --sha256 <HEX>
 ./target/release/dm <URL> <DEST> --throttle 1m
 
-# UI prototype (Node 20)
+# Web preview / frontend build
 cd ui
 npm ci
 npm run build
+
+# Tauri development shell; build the Rust engine first
+cargo build --release --manifest-path ../engine/Cargo.toml
+npm run tauri:dev
 
 # Media parser tests (Python 3.12, standard library only)
 cd media
@@ -106,33 +112,38 @@ on a real Windows machine and browser — that is a Phase 2 test.
 
 ## Releases
 
-Build and development pre-release workflows are defined for GitHub
-Actions on `windows-latest`; they have not yet run in GitHub and their
-artifacts are therefore not verified:
+Windows Actions workflow status: the initial PR run compiled the CLI
+and passed Rust unit tests, then failed a Windows-only signal call in
+the integration harness. That failure is fixed on the branch. The
+updated run, which also builds/tests Tauri and installs/starts the NSIS
+app, is pending; its artifacts are not yet verified.
 
 - `.github/workflows/windows-build.yml` — pushes to `main`, pull
-  requests and manual runs compile/test the Rust CLI for Windows x64,
-  run loopback engine integration tests, build the UI prototype, test
-  media parsing, validate extension syntax/manifests and upload the
-  actual CLI `.exe` as a short-lived CI artifact.
+  requests and manual runs compile/test the Rust engine and Native
+  Messaging host, lint/build the UI, package the Tauri NSIS installer,
+  run an install/start smoke test, test media parsing, and upload the
+  actual Windows executables as a short-lived CI artifact.
 - `.github/workflows/release.yml` — tags `v*.*.*` build and test the
-  same CLI and publish a **pre-release** with a CLI ZIP, Chromium
-  extension ZIP and SHA-256 checksums. It is not a GUI application;
-  it is unsigned and not yet Windows-installation-tested. The release
-  workflow has not been observed running successfully.
+  CLI/native-host binaries, Tauri desktop app and NSIS installer, then
+  publish a **pre-release** with a CLI ZIP, Chromium extension ZIP,
+  installer and SHA-256 checksums. The installer is unsigned and browser
+  pairing requires an extension ID entered in the app. This workflow has
+  not yet completed successfully on Windows.
 
-A Firefox extension package, an NSIS installer, and an MSI are
-**not produced** by the current release workflow. The repo contains a
-Firefox manifest/source variant and an NSIS script, but neither has a
-complete verified packaging/test path; no MSI project exists. See
-`docs/github-access-diagnosis.md` for the current push blocker: this VPS
-has no authenticated GitHub CLI session, so remote write permissions
-are not yet verified.
+A Firefox extension package and an MSI are **not produced** by the
+current release workflow. Firefox-specific source exists but is not
+complete. See
+`docs/github-access-diagnosis.md` for access history. The configured VPS
+account has write access and PR #1 is open against `main`.
 
 ## Honest limits (Phase 1)
 
-- No Windows `.exe` or MSI built or run; no Tauri app; the
-  workflows have never run on a Windows runner.
+- The Tauri application and NSIS installer compile locally on Linux;
+  Linux backend tests pass. Windows CI previously compiled the CLI and
+  passed Rust unit tests, but its integration run found a Windows test
+  signal bug. The fix and Tauri install/start smoke test await the next
+  Windows run. Do not claim Windows 10/11 compatibility until that and
+  interactive browser tests pass.
 - No IDM reverse engineering: no authorised IDM binary was
   available, and no proprietary code is included. The feature
   matrix in `docs/feature-matrix.md` labels every row
@@ -140,9 +151,8 @@ are not yet verified.
 - Extension not live-tested; Native Messaging pairing unverified.
 - Checkpoint formats differ between the engine and the QA
   harness — convergence is a Phase 2 task (see `docs/roadmap.md`).
-- Builds are unsigned until a signing credential is supplied
-  through GitHub Secrets. Expect SmartScreen / unknown-publisher
-  warnings on unsigned builds.
+- Development builds are unsigned. Expect SmartScreen / unknown-publisher
+  warnings until a signing credential and signing workflow are added.
 
 ## Contributing and security
 

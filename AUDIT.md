@@ -21,9 +21,9 @@ The checkout contains Rust engine sources/tests, Chromium and Firefox extension 
 | Engine validation | Release-mode build completed without compiler warnings; Rust unit tests 2/2, Native Messaging tests 8/8 and local HTTP integration tests 12/12 pass (see `TEST_REPORT.md`). |
 | Browser extension (`extension/`) | Chromium MV3 and Firefox-specific source/manifest exist. The Rust Native Messaging host and Tauri per-user Chromium registration UI are implemented; live browser handshake/download remains unverified, and Firefox packaging/pairing is incomplete. |
 | Media (`media/`) | Static HLS/DASH playlist parsing, variant/audio/subtitle metadata, DRM marker refusal and FFmpeg command builder exist. Playlist fetching/segment transfer, end-to-end media jobs, and conversion/merge execution are absent. |
-| UI (`ui/`) | React/TypeScript interface with ten navigation views and a Tauri 2 shell. It starts/resumes CLI jobs with valid checkpoints, requests pause/cancel through the engine control file, polls actual progress, persists jobs shared with Native Messaging, and registers Chromium host manifests per-user. Linux cargo build/tests pass. Latest Windows install/start smoke predates these controls; a Windows rerun is pending. Queue/scheduler and service lifecycle remain missing. |
+| UI (`ui/`) | React/TypeScript interface with ten navigation views and a Tauri 2 shell. It starts/resumes CLI jobs with valid checkpoints, requests pause/cancel through the engine control file, polls actual progress, persists jobs shared with Native Messaging, and registers Chromium host manifests per-user. Linux and Windows CI pass; Windows CI built and smoke-launched the latest app but did not interact with its controls. Queue/scheduler and service lifecycle remain missing. |
 | Installer | Tauri NSIS bundle packages the desktop app and engine resources; Windows CI silently installed it and confirmed the app process stays alive through startup. Legacy `installer/download-manager.nsi` remains a separate CLI-only installer script. No MSI project exists. |
-| CI/release | Windows run `39856467213` passed engine tests, Native Messaging protocol and host-download integration tests, Tauri build/NSIS install/start smoke, media tests and extension checks, and uploaded three Windows executables. The tag workflow published development pre-release `v0.2.0` with checksummed assets. The control-file pause/resume/cancel changes are pending Windows CI. |
+| CI/release | Windows run `39865207656` passed engine tests (including control-file pause/resume/cancel), Native Messaging protocol and host-download integration tests, Tauri build/NSIS install/start smoke, media tests and extension checks, and uploaded three Windows executables. The tag workflow published development pre-release `v0.2.0` with checksummed assets. |
 | Documentation | README, license, contribution, security, changelog, third-party notices, and lowercase `docs/architecture.md` / `docs/roadmap.md` exist. Root `ARCHITECTURE.md`, `ROADMAP.md`, `AUDIT.md` and `TEST_REPORT.md` were missing before this audit. |
 
 No IDM binary or proprietary IDM source was present or analyzed. No parity, speed superiority, Windows operation, or release readiness is established by this audit.
@@ -46,12 +46,11 @@ No IDM binary or proprietary IDM source was present or analyzed. No parity, spee
 
 ## Priority gaps
 
-1. Run Windows CI against the newest engine control-file pause/cancel and desktop Pause/Cancel/Resume changes.
-2. Verify a GUI-driven download and browser handoff on an interactive Windows 10/11 machine; Firefox packaging remains incomplete.
-3. Migrate JSON history to SQLite and add queue/scheduler lifecycle.
+1. Verify a GUI-driven download with Pause/Cancel/Resume and browser handoff on an interactive Windows 10/11 machine; Firefox packaging remains incomplete.
+2. Migrate JSON history to SQLite and add queue/scheduler lifecycle.
+3. Add ETag-change, flaky-server retry and crash-kill recovery regression tests.
 4. Add end-to-end media transfer around the parser, with explicit user selection and protected-content refusal.
-5. Add ETag-change, flaky-server retry and crash-kill recovery regression tests.
-6. Validate Windows 10/11 user-machine install, upgrade/uninstall, handoff and recovery; the CI runner does not establish user-machine compatibility.
+5. Validate Windows 10/11 user-machine install, upgrade/uninstall, handoff and recovery; the CI runner does not establish user-machine compatibility.
 
 ## GitHub publication status
 
@@ -59,4 +58,4 @@ The VPS is authenticated as `Hamoudathebest`; GitHub API reports repository push
 
 ## Changes made during this audit
 
-Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Linux Tauri build/tests/Clippy pass; engine control-file pause/resume/cancel tests now pass locally. Windows run `39856467213` built the NSIS installer, installed it and smoke-launched the desktop app before those latest controls were added. Development pre-release `v0.2.0` is published; current Windows CI and live browser/Windows 10/11 testing remain pending.
+Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Linux Tauri build/tests/Clippy pass; engine control-file pause/resume/cancel tests pass locally and on Windows CI run `39865207656`. That run also built the NSIS installer, installed and smoke-launched the updated desktop app; live GUI interaction, browser handoff and interactive Windows 10/11 testing remain pending.

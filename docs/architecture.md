@@ -695,9 +695,10 @@ A media job is a normal download job (§9) plus:
 > **Current status:** `ui/src-tauri/` provides a Tauri 2 shell and backend
 > commands to start/resume/pause/cancel the Rust CLI, list persisted jobs, and register the
 > Chromium Native Messaging host. The frontend starts downloads and polls
-> observed progress. Linux compile/tests pass. The Windows app, NSIS
-> installation/startup, registry flow, latest pause/cancel controls, queue/scheduler and
-> live browser handoff have not yet passed end-to-end verification. This
+> observed progress. Linux compile/tests pass. Windows CI builds and
+> smoke-launches the app and tests engine control-file pause/resume/cancel;
+> installed UI actions, registry flow and live browser handoff still need
+> interactive verification. Queue/scheduler remain unimplemented. This
 > section's remaining design points are future work, not shipped behavior.
 
 ### 7.1 Why Tauri 2 (rationale, and what would change the choice)

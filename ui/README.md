@@ -17,8 +17,9 @@ Windows 10/11 user-machine or interactive browser compatibility.
 
 Checkpointed interrupted/failed downloads can be resumed from the Active
 Downloads view. Pause/cancel are implemented through engine control files
-and pass Linux tests; Windows CI verification is pending. Download queue
-and scheduler are not implemented yet. DRM circumvention is not implemented.
+and pass Linux and Windows CI engine tests; the installed UI controls have
+not yet been exercised interactively. Download queue and scheduler are not
+implemented yet. DRM circumvention is not implemented.
 
 ## Run it (exact commands)
 

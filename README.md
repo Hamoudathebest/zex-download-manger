@@ -7,8 +7,8 @@ from scratch, in the open, with no proprietary code.
 > not a finished product or a claim of parity with
 > Internet Download Manager (IDM). GitHub Actions built the Windows CLI
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
-> `windows-latest`. That successful revision predates the newest GUI
-> Resume/Pause/Cancel controls; a follow-up Windows run is pending. This is not a
+> `windows-latest`, including the newest engine lifecycle controls. CI does
+> not exercise the GUI actions interactively. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

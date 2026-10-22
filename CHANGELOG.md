@@ -7,13 +7,13 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 ## [Unreleased]
 
 - Added desktop Resume, Pause and Cancel actions backed by checkpoint/control
-  files. Linux backend tests pass; this newest GUI control change is awaiting
-  its Windows CI run.
+  files. Linux tests and Windows CI run `39865207656` pass; interactive GUI
+  actions still need a Windows user-machine check.
 - Open-source pack: MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
   `THIRD_PARTY_NOTICES.md`, and this changelog.
 - Published audit branch `engineering/audit-windows-ci` and pull
   request #1 to `main`; access and commit publication are verified.
-- Windows CI run `39856467213` passed engine/host tests, Tauri build,
+- Windows CI run `39865207656` passed engine/host tests, Tauri build,
   NSIS install/start smoke, media and extension checks, and uploaded the
   CLI, Native Messaging host and installer artifacts.
 - Published development pre-release [`v0.2.0`](https://github.com/Hamoudathebest/zex-download-manger/releases/tag/v0.2.0)
@@ -25,7 +25,7 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
   are implemented and Linux-tested. Firefox pairing remains incomplete.
 - Added a loopback end-to-end Native Messaging test that verifies the host
   starts `dm`, downloads the exact fixture bytes and persists the job record.
-  It passes on Linux and Windows CI run `39856467213`.
+  It passes on Linux and Windows CI run `39865207656`.
 - Icon generation: `tools/generate-icons.py` (standard library only)
   regenerates the extension PNG icons inside CI, because the
   connector snapshot-push route accepts text files only.

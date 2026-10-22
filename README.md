@@ -123,8 +123,9 @@ app, is pending; its artifacts are not yet verified.
   Messaging host, lint/build the UI, package the Tauri NSIS installer,
   run an install/start smoke test, test media parsing, and upload the
   actual Windows executables as a short-lived CI artifact. The latest
-  run passed engine/host tests and built the installer, but the smoke
-  test's install-path assumption failed; the corrected rerun is pending.
+  run passed engine/host tests and installed the package, but its smoke
+  script selected the uninstaller instead of the app; the corrected
+  selector is pending rerun.
 - `.github/workflows/release.yml` — tags `v*.*.*` build and test the
   CLI/native-host binaries, Tauri desktop app and NSIS installer, then
   publish a **pre-release** with a CLI ZIP, Chromium extension ZIP,
@@ -142,10 +143,10 @@ account has write access and PR #1 is open against `main`.
 
 - The Tauri application source builds and tests locally on Linux; the
   NSIS installer is built only on Windows CI. Windows CI has passed
-  engine/host integration tests and built the installer, but the install
-  smoke test failed to find the configured path. The corrected rerun is
-  pending. Do not claim Windows 10/11 compatibility until installer/startup
-  and interactive browser tests pass.
+  engine/host integration tests and built/installed the installer, but
+  the smoke script selected `uninstall.exe` rather than the desktop app.
+  The selector fix is pending rerun. Do not claim Windows 10/11 compatibility
+  until app startup and interactive browser tests pass.
 - No IDM reverse engineering: no authorised IDM binary was
   available, and no proprietary code is included. The feature
   matrix in `docs/feature-matrix.md` labels every row

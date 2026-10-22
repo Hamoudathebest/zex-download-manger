@@ -65,7 +65,7 @@ jobs:
           $installDir = Join-Path $env:RUNNER_TEMP 'zex-dm-smoke'
           $installProcess = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDir") -PassThru -Wait
           if ($installProcess.ExitCode -ne 0) { throw "NSIS installer exited with $($installProcess.ExitCode)." }
-          $app = Get-ChildItem -Path $installDir -Filter '*.exe' -File | Where-Object { $_.Name -notin @('dm.exe', 'dm-native-host.exe') } | Select-Object -First 1
+          $app = Get-ChildItem -Path $installDir -Filter 'zex-download-manager.exe' -File -Recurse | Select-Object -First 1
           if (-not $app) { throw 'Installed Tauri application executable was not found.' }
           $process = Start-Process -FilePath $app.FullName -PassThru
           Start-Sleep -Seconds 8

@@ -3,9 +3,10 @@
 > **Current status (2026-10-22):** the first Windows Actions run compiled
 > the standalone CLI and passed Rust unit tests, then failed an integration
 > test due to Windows SIGINT semantics. That test is fixed. The second
-> run built the Tauri/NSIS installer and passed engine/host tests, but
-> the install smoke test used a path that was not created. The test now
-> uses a no-space install path; rerun evidence is pending.
+> run built and silently installed the Tauri/NSIS installer and passed
+> engine/host tests, but its smoke test selected the uninstaller instead
+> of the app. The selector now targets the app binary; rerun evidence
+> is pending.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >
@@ -65,7 +66,8 @@ artefact. Do not label prototype output as a release.
 3. **Artifact:** `dm-windows-x64-<commit>` contains CLI, Native Messaging
    host and NSIS desktop installer executables. All are unsigned.
 4. A successful workflow run is the evidence for Windows build/install
-   claims. The initial run failed one test; the corrected run is pending.
+   claims. The latest run installed the package but tested the wrong EXE;
+   the corrected app-start smoke test is pending.
 
 ## 4. Contributing notes
 

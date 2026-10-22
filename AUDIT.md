@@ -18,12 +18,12 @@ The checkout contains Rust engine sources/tests, Chromium and Firefox extension 
 | Component | Observed status |
 |---|---|
 | Rust engine (`engine/`) | Real CLI implementation: HTTP(S), byte-range probing, parallel segments, no-range fallback, JSON checkpoint/resume, retries, aggregate throttling, SHA-256 and atomic final rename. This is a CLI prototype, not an app service or Tauri backend. SQLite persistence, queue/scheduler, dynamic segment sizing and desktop API are absent. |
-| Engine validation | Release-mode build completed; Rust unit tests 2/2 and local HTTP integration tests 10/10 pass (see `TEST_REPORT.md`). Compiler emits six warnings. |
-| Browser extension (`extension/`) | Chromium MV3 and Firefox-specific source/manifest exist. The documented flow is explicit user initiation and Native Messaging. Native host implementation/pairing is not present; live browser behavior is unverified. |
+| Engine validation | Release-mode build completed without compiler warnings; Rust unit tests 2/2, Native Messaging tests 7/7 and local HTTP integration tests 10/10 pass (see `TEST_REPORT.md`). |
+| Browser extension (`extension/`) | Chromium MV3 and Firefox-specific source/manifest exist. The Rust Native Messaging host and Tauri per-user Chromium registration UI are implemented; live browser handshake/download remains unverified, and Firefox packaging/pairing is incomplete. |
 | Media (`media/`) | Static HLS/DASH playlist parsing, variant/audio/subtitle metadata, DRM marker refusal and FFmpeg command builder exist. Playlist fetching/segment transfer, end-to-end media jobs, and conversion/merge execution are absent. |
-| UI (`ui/`) | React/TypeScript interface with ten navigation views and a new Tauri 2 shell. The shell starts the real CLI, polls live progress, persists jobs, merges jobs submitted from Native Messaging, and registers Chromium host manifests per-user. Tauri Linux cargo build/tests pass; Windows app/installer startup awaits the workflow. Pause/cancel, queue/scheduler and full service lifecycle remain missing. |
-| Installer (`installer/`) | NSIS script targets the actual Rust CLI binary. It is not a desktop GUI installer and has not been built or run on Windows. No MSI project was found. |
-| CI/release | The audited checkout lacked workflows; this branch added Windows build and pre-release workflows. The first run exposed a Windows SIGINT test-harness issue, now fixed. The second passed engine/host tests and built the Tauri installer. The third silently installed it; the smoke script selected the uninstaller executable, which exited cleanly rather than opening the app. The selector now targets the Tauri app binary by exact name; another run is pending. No release artifact exists yet. |
+| UI (`ui/`) | React/TypeScript interface with ten navigation views and a Tauri 2 shell. It starts the real CLI, polls actual progress, persists jobs shared with Native Messaging, and registers Chromium host manifests per-user. Linux cargo build/tests pass. Windows app install/start smoke passes on `windows-latest`; pause/cancel, queue/scheduler and service lifecycle remain missing. |
+| Installer | Tauri NSIS bundle packages the desktop app and engine resources; Windows CI silently installed it and confirmed the app process stays alive through startup. Legacy `installer/download-manager.nsi` remains a separate CLI-only installer script. No MSI project exists. |
+| CI/release | The audited checkout lacked workflows; this branch added Windows build and pre-release workflows. Run `39845367656` passed engine tests, Native Messaging tests, Tauri build/NSIS install/start smoke, media tests and extension checks, and uploaded three Windows executables. No tag release has been published. |
 | Documentation | README, license, contribution, security, changelog, third-party notices, and lowercase `docs/architecture.md` / `docs/roadmap.md` exist. Root `ARCHITECTURE.md`, `ROADMAP.md`, `AUDIT.md` and `TEST_REPORT.md` were missing before this audit. |
 
 No IDM binary or proprietary IDM source was present or analyzed. No parity, speed superiority, Windows operation, or release readiness is established by this audit.
@@ -32,29 +32,31 @@ No IDM binary or proprietary IDM source was present or analyzed. No parity, spee
 
 - `cargo test --locked` in `engine/`: **2 passed**.
 - `cargo build --release --locked` in `engine/`: **passed** with no warnings after cleanup.
-- `python3 -m unittest -v test_engine` in `engine/tests/`: **10 passed** against the built release binary and loopback-only HTTP fixtures. This includes single and segmented transfer, pause/resume, no-range fallback, redirect, expected-hash rejection, real throttling, changed-size resume rejection, 404 and unknown-length transfer. The Python fixture server printed connection-reset/broken-pipe tracebacks for expected client disconnects in two cases; assertions passed.
-- `npm ci && npm run build` in `ui/`: **passed** (TypeScript + Vite production build); npm reported **0 vulnerabilities** across 50 audited packages.
+- `python3 -m unittest -v test_engine` in `engine/tests/`: **10 passed** against the built release binary and loopback-only HTTP fixtures. This includes single and segmented transfer, pause/resume, no-range fallback, redirect, expected-hash rejection, real throttling, changed-size resume rejection, 404 and unknown-length transfer.
+- Native Messaging: **5 Rust unit tests + 2 protocol subprocess tests passed**, including shared-state record persistence.
+- Tauri backend: **4 Rust tests passed** for shared-state import/merge, completion reconciliation, progress parsing and safe filenames.
+- `npm ci && npm run build` in `ui/`: **passed** (TypeScript + Vite production build); npm reported **0 vulnerabilities** across 54 audited packages.
 - `python3 tests/run_tests.py` in `media/`: **27 checks passed**.
 - Extension JS/JSON validation: **passed** with Node syntax checks and Python JSON parsing for both manifests and the Chromium Native Messaging template.
-- `npm run lint` in `ui/`: completed with one `react(only-export-components)` warning in `src/App.tsx`.
+- `npm run lint` in `ui/`: **passed with no warnings** after removing the unnecessary Fast Refresh export.
 - `cargo fmt --check` and Clippy: **pass** for the engine and Tauri backend after fixing existing formatting, unused-code warnings and lint findings.
 - The Python engine integration harness failed on its first invocation because it requires `engine/target/release/dm`; after building that binary the full suite passed. This is a test prerequisite, not an implementation failure.
 - A test command run from `engine/` instead of `engine/tests/` reported module-not-found; rerun from its documented test directory passed.
-- `makensis` was not installed, so NSIS compilation was not attempted. The first Windows Actions run compiled the CLI and passed both Rust unit tests, then failed one loopback integration case because of an unsupported Windows signal; see the current Windows run after the fix before claiming a passing suite. Browser live-tests and installer execution have not been performed.
+- `makensis` is not installed locally. The Tauri NSIS installer was built, silently installed and start-smoke-tested on `windows-latest`. Browser live-tests, interactive Windows 10/11 user-machine tests, GUI-driven download completion, and uninstaller execution have not been performed.
 
 ## Priority gaps
 
-1. Push the current Tauri/Native Messaging work, then inspect its Windows CI build, installer/startup smoke and integration test results.
+1. Keep the passing Windows CI run and artifact hashes recorded; next verify a GUI-driven download and browser handoff on an interactive Windows 10/11 machine.
 2. Run live Chrome/Edge/Brave pairing and browser-to-desktop download tests; Firefox packaging remains incomplete.
 3. Add pause/cancel controls, SQLite-backed history, queue and scheduler lifecycle.
 4. Add end-to-end media transfer around the parser, with explicit user selection and protected-content refusal.
 5. Add ETag-change, flaky-server retry and crash-kill recovery regression tests.
 6. Validate Windows 10/11 user-machine install, upgrade/uninstall, handoff and recovery; the CI runner does not establish user-machine compatibility.
 
-## GitHub publication blocker
+## GitHub publication status
 
-The VPS is authenticated as `Hamoudathebest`; GitHub API reports repository push/admin permissions. Commit `930d810` is on remote branch `engineering/audit-windows-ci`, and PR #1 targets `main`. Branch protection is disabled. Subsequent milestone commits must be pushed to this PR branch and checked in Actions before any merge or release.
+The VPS is authenticated as `Hamoudathebest`; GitHub API reports repository push/admin permissions. Branch `engineering/audit-windows-ci` and PR #1 target `main`; latest pushed commit is `bce701c`. Branch protection is disabled. Subsequent milestone commits must be pushed to this PR branch and checked in Actions before any merge or release.
 
 ## Changes made during this audit
 
-Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Tauri cargo build, tests, and Clippy pass on Linux; Windows engine/host tests and installer build pass on the runner. The corrected installer install/start smoke test and live browser handshake are pending.
+Added root-level audit/test reports and navigation entries for the existing architecture and roadmap docs. Added Windows build and tag-triggered pre-release workflows, plus Windows-aware executable naming/Ctrl-Break tests. Added a Rust Native Messaging executable with framing and shared-state tests. Added a Tauri 2 application that starts the real CLI, persists job state, displays observed progress, merges browser-submitted jobs, and registers Chromium Native Messaging from the browser integration screen. Linux Tauri build/tests/Clippy pass, and Windows run `39845367656` built the NSIS installer, installed it and smoke-launched the desktop app. Live browser handshake and interactive Windows 10/11 coverage remain pending.

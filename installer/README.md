@@ -32,10 +32,9 @@ The output is `installer/download-manager-setup.exe`.
 ## Tauri desktop installer
 
 The application NSIS bundle is configured in `ui/src-tauri/tauri.conf.json`.
-Windows CI builds the Tauri desktop app with its engine and Native Messaging
-resources, silently installs it, and checks that the installed app starts.
-The updated workflow is still awaiting a successful Windows run; an installer
-is not yet verified for release.
+Windows run `39845367656` built it, silently installed it, and verified the
+desktop process remained running during the startup smoke test. Interactive
+Windows 10/11 tests and browser pairing remain outstanding.
 
 ## Signing
 

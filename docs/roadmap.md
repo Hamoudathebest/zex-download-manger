@@ -120,8 +120,8 @@ not a date.
 
 **Goal:** turn the proven Linux engine design into a real desktop
 app a Windows user can install and run, and prove it on Windows. The
-Tauri shell and CI smoke-test path are implemented; P2 exit evidence
-still requires a successful Windows runner and end-to-end browser tests.
+Tauri shell and installer pass a CI install/start smoke test; P2 exit
+evidence still requires interactive Windows and end-to-end browser tests.
 
 ### 2.1 Prerequisites (environment changes, not code)
 
@@ -136,12 +136,12 @@ still requires a successful Windows runner and end-to-end browser tests.
 
 | ID | Milestone | Deliverable / evidence | Depends on | Status |
 |---|---|---|---|---|
-| P2-M1 | Toolchain + Tauri shell | Tauri 2 project, real window, bundled resources and Windows startup smoke | §2.1 prerequisites | **Partial** — scaffold/tests exist; Windows runner verification pending |
+| P2-M1 | Toolchain + Tauri shell | Tauri 2 project, real window, bundled resources and Windows startup smoke | §2.1 prerequisites | **Partial** — CI build and startup smoke pass; interactive Win 10/11 validation pending |
 | P2-M2 | Engine decision executed (D-01) | Rust engine integrated to the §3.6 service contract, with persistence and lifecycle control | P1 exit gate, P2-M1 | **Partial** — Tauri launches `dm`; full API, SQLite, pause/cancel and queue absent |
 | P2-M3 | UI shell decision executed (D-02, D-03) | Tauri 2 + React/TS/Tailwind views | P2-M1 | **Partial** — ten views run in Tauri; scheduler, queue actions and stats remain incomplete |
-| P2-M4 | UI ↔ engine integration | Frontend calls commands, shows actual progress and persists jobs | P2-M2, P2-M3 | **Partial** — add/list/progress and shared state implemented; Windows run pending |
+| P2-M4 | UI ↔ engine integration | Frontend calls commands, shows actual progress and persists jobs | P2-M2, P2-M3 | **Partial** — add/list/progress and shared state implemented; end-to-end download via the GUI remains to be exercised on Windows |
 | P2-M5 | Windows browser integration | MV3 extension installed; Native Messaging registration and handoff demonstrated; Firefox decision documented | P2-M2, §2.1 browsers | **Partial** — host, shared job records and Chromium registration UI implemented; browser handshake untested; Firefox incomplete |
-| P2-M6 | Windows packaging | NSIS installer builds, installs, starts and uninstalls cleanly | P2-M4, P2-M5 | **Partial** — Tauri NSIS config and smoke workflow added; successful run pending; MSI not implemented |
+| P2-M6 | Windows packaging | NSIS installer builds, installs, starts and uninstalls cleanly | P2-M4, P2-M5 | **Partial** — Tauri NSIS build/install/start smoke passes in CI; uninstall and interactive user-machine tests pending; MSI not implemented |
 | P2-M7 | Media Phase 2 | fMP4 remux via ffmpeg (D-10) if verified; DASH polish; segment handling for fMP4; encrypted-refusal re-tested on Windows | P2-M2 | Open |
 | P2-M8 | Scheduler / queue polish | Queue pre-emption decision (D-08) executed or deferred with reasons; shutdown-on-complete + prevent-sleep on Windows power APIs, tested (not just coded) | P2-M4 | Open |
 | P2-M9 | Phase 2 test report (Windows) | Written report: Windows version/build, hardware, browsers tested, installer tested, handoff tested, media tested, known failures listed. Every Windows claim in this report is backed by a run on the test machine — anything else stays `not-verified` | P2-M1…P2-M8 | Open — **this is the Phase 2 exit evidence** |

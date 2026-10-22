@@ -1,11 +1,10 @@
 # Release engineering — DevOps & release plan (Agent 10, Phase 1)
 
-> **Current status (2026-10-22):** `windows-build.yml` ran on a Windows
-> runner, compiled the standalone CLI and passed Rust unit tests, then
-> failed an integration test because of an unsupported Windows SIGINT
-> call. That call is fixed. The current workflow also builds the Tauri
-> app, installs the NSIS bundle and checks startup; the revised run is
-> pending. This document remains the original release plan; root
+> **Current status (2026-10-22):** Windows run `39845367656` passed Rust,
+> engine integration, Native Messaging, Tauri build, NSIS install/start,
+> media and extension syntax checks on `windows-latest`. Interactive
+> browser and Windows 10/11 user-machine testing remain open. This document
+> remains the original release plan; root
 > `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.
 >
 > **Status: PLAN ONLY — NOT BUILT HERE.**

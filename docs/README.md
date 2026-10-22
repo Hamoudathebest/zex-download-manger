@@ -22,9 +22,9 @@
 
 - **[../.github/workflows/windows-build.yml](../.github/workflows/windows-build.yml)**
   — Windows x64 Rust build/tests, Native Messaging tests, Tauri/NSIS
-  build and install/start smoke test. The first CI run built the CLI
-  but failed on a Windows-specific test signal; the fix and expanded
-  desktop workflow await a new run.
+  build and install/start smoke test. Run `39845367656` passed these
+  checks on `windows-latest`; interactive browser and user-machine
+  Windows 10/11 verification remain outstanding.
 
 ## Other areas
 

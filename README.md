@@ -1,22 +1,21 @@
-# Download Manager
+# ZEX Download Manager
 
 An open-source, IDM-inspired download manager for Windows — built
 from scratch, in the open, with no proprietary code.
 
-> **Honest status — read this first.** This is Phase 1, a working
-> foundation, not a finished product and not a claim of parity with
-> Internet Download Manager (IDM). GitHub Actions compiled the
-> standalone Windows CLI, and Tauri desktop application source now exists;
-> the Tauri installer and application startup still need a successful Windows
-> workflow run. The browser
-> extension has not been live-tested, and builds are unsigned by
-> default. What does exist is real and tested on loopback: a Rust
-> download engine, a Manifest V3 extension, an HLS/DASH media
-> parser, and a React UI prototype. See
+> **Honest status — read this first.** This is a development build,
+> not a finished product or a claim of parity with
+> Internet Download Manager (IDM). GitHub Actions built the Windows CLI
+> and Tauri NSIS installer, installed it, and smoke-launched the app on
+> `windows-latest`. This is not a Windows 10/11 user-machine compatibility
+> test. The browser extension has not been live-tested, and builds are
+> unsigned by default. The repository now contains a Rust download engine,
+> Tauri desktop shell, Native Messaging host, Manifest V3 extension, and
+> HLS/DASH parser; see
 > [AUDIT.md](AUDIT.md), [TEST_REPORT.md](TEST_REPORT.md), and the "Honest limits" section
 > below for exactly what is and is not done.
 
-## Features (Phase 1)
+## Current capabilities (development)
 
 - **Segmented downloads** — the Rust engine (`engine/`, binary
   `dm`) detects Range support, splits eligible files across 1–32
@@ -50,6 +49,9 @@ from scratch, in the open, with no proprietary code.
   URLs, starts the real engine and writes shared job state. The Tauri
   app can register Chromium extension IDs. Live browser handshake and
   Firefox pairing remain unverified/incomplete.
+- **Persistence** — download checkpoints and desktop history currently
+  use JSON files. SQLite migration, reliable cross-session pause/resume
+  controls in the GUI, and queue/scheduler management remain open work.
 
 ## Repository layout
 
@@ -112,26 +114,25 @@ on a real Windows machine and browser — that is a Phase 2 test.
 
 ## Releases
 
-Windows Actions workflow status: the initial PR run compiled the CLI
-and passed Rust unit tests, then failed a Windows-only signal call in
-the integration harness. That failure is fixed on the branch. The
-updated run, which also builds/tests Tauri and installs/starts the NSIS
-app, is pending; its artifacts are not yet verified.
+Windows Actions run `39845367656` passed: Rust and loopback tests,
+Native Messaging protocol tests, Tauri build, NSIS install/start smoke,
+media tests, extension syntax checks, and artifact upload. The real PE
+artifacts and SHA-256 values are recorded in `TEST_REPORT.md`.
 
 - `.github/workflows/windows-build.yml` — pushes to `main`, pull
   requests and manual runs compile/test the Rust engine and Native
   Messaging host, lint/build the UI, package the Tauri NSIS installer,
   run an install/start smoke test, test media parsing, and upload the
-  actual Windows executables as a short-lived CI artifact. The latest
-  run passed engine/host tests and installed the package, but its smoke
-  script selected the uninstaller instead of the app; the corrected
-  selector is pending rerun.
+  actual Windows executables as a short-lived CI artifact. The passing
+  run installed the package and confirmed that the Tauri app remained
+  running during its startup smoke test.
 - `.github/workflows/release.yml` — tags `v*.*.*` build and test the
   CLI/native-host binaries, Tauri desktop app and NSIS installer, then
   publish a **pre-release** with a CLI ZIP, Chromium extension ZIP,
   installer and SHA-256 checksums. The installer is unsigned and browser
   pairing requires an extension ID entered in the app. This workflow has
-  not yet completed successfully on Windows.
+  passed build/install/start smoke on `windows-latest`; no tagged
+  release has been published.
 
 A Firefox extension package and an MSI are **not produced** by the
 current release workflow. Firefox-specific source exists but is not
@@ -139,14 +140,12 @@ complete. See
 `docs/github-access-diagnosis.md` for access history. The configured VPS
 account has write access and PR #1 is open against `main`.
 
-## Honest limits (Phase 1)
+## Current limitations
 
-- The Tauri application source builds and tests locally on Linux; the
-  NSIS installer is built only on Windows CI. Windows CI has passed
-  engine/host integration tests and built/installed the installer, but
-  the smoke script selected `uninstall.exe` rather than the desktop app.
-  The selector fix is pending rerun. Do not claim Windows 10/11 compatibility
-  until app startup and interactive browser tests pass.
+- The Tauri source builds/tests locally, and CI built/installed the NSIS
+  package and smoke-launched the app on `windows-latest`. This is not an
+  interactive Windows 10/11 user-machine test. Browser handoff also needs
+  a live browser/extension verification before it can be claimed.
 - No IDM reverse engineering: no authorised IDM binary was
   available, and no proprietary code is included. The feature
   matrix in `docs/feature-matrix.md` labels every row

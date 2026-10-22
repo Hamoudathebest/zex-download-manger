@@ -1,12 +1,9 @@
 # Building — Linux prototype vs. Windows (GitHub Actions)
 
-> **Current status (2026-10-22):** the first Windows Actions run compiled
-> the standalone CLI and passed Rust unit tests, then failed an integration
-> test due to Windows SIGINT semantics. That test is fixed. The second
-> run built and silently installed the Tauri/NSIS installer and passed
-> engine/host tests, but its smoke test selected the uninstaller instead
-> of the app. The selector now targets the app binary; rerun evidence
-> is pending.
+> **Current status (2026-10-22):** Windows run `39845367656` passed the
+> Rust, engine integration, Native Messaging, Tauri build, NSIS install/start
+> smoke, media, and extension syntax checks. This proves the `windows-latest`
+> runner path only, not Windows 10/11 user-machine compatibility.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >
@@ -22,7 +19,7 @@
 | Extension lint / build | Yes — JS/JSON validation | Yes — JS/JSON validation |
 | Native Messaging protocol test over stdin/stdout pipes | Yes — the protocol itself is OS-neutral | Yes |
 | Windows `.exe` | **No** — not built here | Yes — CI artefact, **unsigned by default** |
-| Tauri NSIS installer (`.exe`) | **No** — Windows target only | Configured in Tauri and built/smoke-tested by CI (rerun pending) |
+| Tauri NSIS installer (`.exe`) | **No** — Windows target only | Built, silently installed and startup-smoke-tested on `windows-latest` |
 | MSI | **No** — not implemented | Not implemented |
 | Native Messaging registry registration | **No** — Windows registry work, not testable here | UI registration command is implemented; CI/live browser verification pending |
 | Code signing | **No** | **No** — all current artifacts are unsigned |
@@ -65,9 +62,9 @@ artefact. Do not label prototype output as a release.
    install/start smoke test.
 3. **Artifact:** `dm-windows-x64-<commit>` contains CLI, Native Messaging
    host and NSIS desktop installer executables. All are unsigned.
-4. A successful workflow run is the evidence for Windows build/install
-   claims. The latest run installed the package but tested the wrong EXE;
-   the corrected app-start smoke test is pending.
+4. Workflow run `39845367656` passed the build and installer/startup
+   smoke. Treat it as runner validation only; a successful runner build
+   does not prove interactive Windows 10/11 compatibility.
 
 ## 4. Contributing notes
 

@@ -11,9 +11,9 @@ download** starts the real Rust `dm` engine, the UI polls actual progress,
 and job records persist in the app-data directory. Jobs submitted through
 the Chromium Native Messaging host share that state file.
 
-The Tauri shell, NSIS bundle, and install/start smoke test are configured
-for Windows CI. They are not considered Windows-verified until the
-updated GitHub Actions run passes.
+The Tauri shell, NSIS bundle, and install/start smoke test passed on the
+GitHub `windows-latest` runner. This is runner validation, not a claim of
+Windows 10/11 user-machine or interactive browser compatibility.
 
 Pause/cancel controls, download queue and scheduler are not implemented
 in the desktop shell yet. The Tauri UI reports those limits rather than

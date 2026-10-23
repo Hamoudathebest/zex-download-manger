@@ -9,6 +9,10 @@ license = "MIT"
 name = "dm"
 path = "src/main.rs"
 
+[[bin]]
+name = "dm-native-host"
+path = "src/native_host.rs"
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
@@ -17,3 +21,4 @@ serde_json = "1"
 sha2 = "0.10"
 ctrlc = "3"
 futures-util = "0.3"
+fs2 = "0.4"

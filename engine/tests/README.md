@@ -1,11 +1,9 @@
 # Download-manager QA harness — Phase 1
 
-**Scope note (2026-10-21):** the engine prototype does not exist yet
-(`engine/` was empty when this harness was written). These tests therefore
-run against a **local** Range-capable HTTP server with urllib/curl as the
-client. They prove transfer mechanics and server behaviour with real
-bytes and real SHA-256 checks. **Engine-integration tests are PENDING**
-until the engine lands — re-point the same cases at the engine then.
+**Historical scope note (2026-10-21):** this harness was first written
+before the Rust engine existed. That older harness remains in
+`test_downloads.py`; the actual engine and Native Messaging tests below
+now drive the real binaries against loopback fixtures.
 
 ## Files
 
@@ -16,18 +14,25 @@ until the engine lands — re-point the same cases at the engine then.
   resume-with-fallback, SHA-256 verify, JSON checkpoint (harness format v1).
 - `test_downloads.py` — the suite (9 tests, see below).
 - `run_tests.py` — verbose runner.
+- `test_engine.py` — integration tests for the real `dm` CLI.
+- `test_native_host.py` — framed protocol tests for the real native host.
+- `test_native_host_download.py` — native host to engine loopback download,
+  byte hash and shared state persistence test.
 
 ## Run
 
 ```sh
 cd ~/workspace/download-manager/engine/tests
-python3 -m unittest -v test_downloads
+python3 -m unittest -v test_engine
+python3 -m unittest -v test_native_host test_native_host_download
 # or
 python3 run_tests.py
 ```
 
 Requirements: Python 3.12 (stdlib only) + `curl` for test 09. No external
-network, no Windows machine, no DRM circumvention.
+network, no DRM circumvention. Build `dm` and `dm-native-host` in release
+mode before running the engine/host integration suites; Windows CI performs
+this build on `windows-latest`.
 
 ## Coverage
 

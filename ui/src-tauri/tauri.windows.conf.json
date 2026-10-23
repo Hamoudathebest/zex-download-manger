@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "../../engine/target/release/dm.exe": "binaries/dm.exe",
+      "../../engine/target/release/dm-native-host.exe": "binaries/dm-native-host.exe"
+    }
+  }
+}

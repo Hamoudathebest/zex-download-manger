@@ -28,10 +28,10 @@ background.js  (MV3 service worker, ephemeral — no persistent port)
   │  checks per-origin toggle in chrome.storage.local
   │  opens a SHORT-LIVED chrome.runtime.connectNative() port per request
   ▼
-Native host  com.downloadmanager.nextgen  (desktop app, NOT in this repo)
+Native host  com.downloadmanager.nextgen  (Rust host in engine/; pairing still manual)
   │  stdio JSON protocol: ping/pong, download_request → download_ack/error
   ▼
-Desktop download engine (separate Phase / component)
+Rust download engine `dm` launched by the native host
 ```
 
 Popup (`popup.html/js/css`) is the only UI for settings and status. It
@@ -45,8 +45,9 @@ never talks to the native host directly.
 | `manifest.json` | MV3 manifest, minimal permissions (see below) |
 | `background.js` | Context menus, native-messaging client, message routing, per-site settings |
 | `content.js` | Page scanner + `⬇ DM` affordance buttons (on-demand injection only) |
-| `popup.html` / `popup.js` / `popup.css` | Per-site toggle, connection status, send-to-app, explicit browser-download fallback |
+| `popup.html` / `popup.js` / `popup.css` | Per-site toggle, connection status, manually chosen URL/page send-to-app, explicit browser-download fallback |
 | `icons/icon{16,48,128}.png` | Placeholder solid-colour icons (replace with final artwork before release) |
+| `engine/src/native_host.rs` | Rust Native Messaging host source; builds as `dm-native-host` alongside `dm` |
 | `native-host/com.downloadmanager.nextgen.json` | Native host manifest **template** — placeholders must be replaced (see PAIRING.md) |
 | `native-host/install-chrome.reg` | Windows registry example — **NOT tested on Windows** |
 | `native-host/PAIRING.md` | Install steps, host name, protocol, and how pairing is verified |
@@ -65,9 +66,10 @@ never talks to the native host directly.
    extension in the path, and `<video>`/`<audio>` elements (or their
    `<source>` children) with a page-exposed http(s) `src`. Plain
    navigation links get no button. Invisible elements get no button.
-5. User clicks a `⬇ DM` button (or a context-menu item, or **Send this
-   page link to app** in the popup). Only then does `background.js`
-   forward that one http(s) URL to the native host.
+5. User clicks a `⬇ DM` button or context-menu item, sends the current
+   page link, or enters a URL and clicks **Send chosen URL to app**.
+   Only that explicit choice is forwarded to the native host; manually
+   entered URLs do not require the current site's opt-in.
 6. If the host is unreachable, the result is reported as a failure.
    The popup then offers **Download with browser instead** — a second,
    explicit click that calls `chrome.downloads.download`. There is no
@@ -85,6 +87,7 @@ is requested at install. In particular: **no `cookies` permission, no
 | `contextMenus` | permission | The "Send link/media to Download Manager" right-click items. | Anything automatic; menus only fire on user click. |
 | `storage` | permission | `chrome.storage.local` for per-origin on/off toggles (`site:<origin>`) and the last-send outcome shown in the popup. | Syncing settings, storing URLs beyond the last-send record, storing any credentials (none are ever collected). |
 | `downloads` | permission | Only the explicit browser-download fallback, after a native-host failure and a second user click. | Silent or automatic downloading; the primary path is the desktop app, not this API. |
+| `nativeMessaging` | permission | Opens a short-lived standard Native Messaging port after the user checks the connection or explicitly sends a chosen URL. | Background polling, persistent ports, or automatic capture. |
 | `scripting` | permission | `chrome.scripting.executeScript` to inject `content.js` on demand (see flow above). | Injecting into tabs the user has not acted on. |
 | `optional_host_permissions: http://*/*, https://*/*` | **optional, not granted at install** | So the per-site toggle can request access to one origin at a time, only when the user enables that site. Without this, Chrome cannot grant per-origin access on demand. The user can revoke per-site access in extension settings at any time. | This is deliberately *not* in `host_permissions`: installing the extension grants **zero** host access. |
 
@@ -169,10 +172,13 @@ differences to address in that build:
   tested on Windows.** JSON/JS syntax validation only (see below). The
   first live test must be: load unpacked → popup → Check connection →
   scan → send, per `native-host/PAIRING.md` §3, on real Windows + Chrome.
-- **No desktop host or download engine is included.** `native-host/` is
-  a manifest template + registry example + instructions only. Until a
-  host implementing the `ping` / `download_request` protocol exists and
-  is installed, the popup will correctly report **Disconnected**.
+- **A Rust Native Messaging host now exists** (`engine/src/native_host.rs`)
+  and speaks the documented ping/download protocol. It starts the `dm`
+  executable in the user's Downloads folder after validating the URL and
+  stores an initial job record in the desktop's shared state file. The UI
+  polls this record; abrupt engine failures are not yet reconciled from
+  process exit metadata. Browser pairing/live validation remain pending;
+  without a registered host manifest, the popup reports **Disconnected**.
 - **Popup status is never faked — but it is also only as fresh as the
   last check.** Default is **Unknown**; **Connected** means only "the
   host replied to a ping just now", not "downloads will succeed".

@@ -6,26 +6,44 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 
 ## [Unreleased]
 
+- Added engine-reported download speed and ETA, persisted download-folder,
+  connections, retries and throttle settings, configurable concurrent queue
+  dispatch, restart checkpoint pausing, and clearable finished history.
+- Added an explicit URL-entry action to the Chromium popup so users can send a
+  chosen http(s) URL to the Native Messaging host without opting in to a site.
+- Added Playwright/CDP Windows automation for Add, Pause, restart/Resume,
+  completion hash, Cancel cleanup, queue/settings/history and real Chromium
+  Native Messaging. Windows run `39960878271` passed desktop lifecycle through
+  Cancel; the Edge profile stayed locked during cleanup and masked the browser
+  result. The rerun uses Playwright-managed Chromium and targeted profile
+  process cleanup; production artifacts remain built without debug flags.
+  No manual GUI test is claimed.
+- Updated Tokio to 1.54.1 to address RustSec RUSTSEC-2026-0384. Added npm and
+  RustSec dependency audit checks to CI; the Tauri Linux GTK dependency tree
+  still reports existing glib/proc-macro-error advisories.
 - Open-source pack: MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
   `THIRD_PARTY_NOTICES.md`, and this changelog.
-- GitHub access diagnosis (`docs/github-access-diagnosis.md`):
-  the push to `Hamoudathebest/zex-download-manger` is blocked by a
-  missing GitHub App installation on the repository owner's account
-  (see that document for the exact fix). No code was pushed yet.
-- Real CI/CD: `.github/workflows/windows-build.yml` rewritten to
-  actually build and test the Rust engine, the UI, and the media
-  parser on `windows-latest`; new `.github/workflows/release.yml`
-  for tag-triggered releases with portable and extension artefacts
-  and SHA-256 checksums.
+- Published audit branch `engineering/audit-windows-ci` and pull
+  request #1 to `main`; access and commit publication are verified.
+- Windows CI run `39866677122` passed engine/host tests, Tauri build,
+  NSIS install/start smoke, media and extension checks, and uploaded the
+  CLI, Native Messaging host and installer artifacts.
+- Published development pre-release [`v0.2.0`](https://github.com/Hamoudathebest/zex-download-manger/releases/tag/v0.2.0)
+  after its tag workflow rebuilt, tested and checksummed the Windows assets.
+- Tauri 2 desktop source starts the real Rust CLI, persists local download
+  records/settings, displays measured progress/speed/ETA, and provides
+  per-user Chromium Native Messaging registration. Windows GUI/browser E2E
+  automation is awaiting the first run.
+- Native Messaging host protocol and shared download-state persistence
+  are implemented and Linux-tested. Firefox pairing remains incomplete.
+- Added a loopback end-to-end Native Messaging test that verifies the host
+  starts `dm`, downloads the exact fixture bytes and persists the job record.
+  It passes on Linux and Windows CI run `39865207656`.
 - Icon generation: `tools/generate-icons.py` (standard library only)
   regenerates the extension PNG icons inside CI, because the
   connector snapshot-push route accepts text files only.
-- Not yet shipped: a Windows installer (.exe via NSIS) and an MSI
-  (via WiX) are documented as planned, not built, because no
-  installer project exists yet. A Firefox extension package is
-  likewise planned, not shipped, because no Firefox-compatible
-  manifest variant exists yet. These are not claimed in any release
-  until they actually build.
+- MSI packaging is not implemented. No Firefox extension
+  release package or live browser proof is claimed.
 
 ## [0.1.0] — 2026-10-21 (Phase 1 foundation)
 

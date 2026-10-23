@@ -1,11 +1,11 @@
 # Roadmap — Download Manager (Phases 1–3)
 
-> **Status:** Plan, not progress report. Nothing in this roadmap is
-> marked done unless a test report or merged implementation says so.
+> **Status:** Phase plan; implementation progress is tracked in the root
+> `AUDIT.md` and `TEST_REPORT.md`. Those current reports supersede stale
+> environment and completion statements in this historical plan.
 > Dates below are **relative milestones** (Phase 1 → Phase 2 → Phase 3),
 > not calendar commitments: no calendar date is promised, because
-> Phase 2 depends on a Windows machine and a Rust toolchain that do
-> not exist in the current environment, and Phase 3 depends on
+> Phase 2 depends on a Windows machine that is not available here, and Phase 3 depends on
 > signing/packaging decisions that are still open.
 >
 > Companion docs: `architecture.md` (design + open decisions D-01…D-12)
@@ -24,7 +24,7 @@
 
 ```
 Phase 1 ── Linux foundation (THIS PHASE)
-  │  Engine prototype on Linux (Node 24) · CLI + local API
+  │  Engine prototype on Linux (Rust CLI) · local API remains unimplemented
   │  Segmented + resumable HTTP(S) · .part + checkpoint JSON
   │  Scheduler/queue · MV3 extension spec + native-host prototype
   │  Media: unencrypted HLS/DASH only, encrypted ⇒ refuse
@@ -65,19 +65,18 @@ Not a Windows build.
 | ID | Milestone | Deliverable / evidence | Depends on | Status |
 |---|---|---|---|---|
 | P1-M1 | Architecture + feature matrix + roadmap (this doc set) | `docs/architecture.md`, `docs/feature-matrix.md`, `docs/roadmap.md` | — | **Done (this delivery, Agent 1)** — docs only, not code |
-| P1-M2 | Engine core: probe → segment → fetch → assemble → verify | Engine code (sibling area `engine/`) passing unit tests for segmentation math, range headers, filename sanitisation, checkpoint round-trip | P1-M1 (contracts in architecture §3.6, §4, §9) | Open — sibling work |
-| P1-M3 | Persistence + crash recovery | `.part` + checkpoint JSON with atomic writes; SIGKILL → restart → resume → byte-identical output vs fixture | P1-M2 | Open |
-| P1-M4 | Scheduler + queue + throttling | Queue ordering, global/per-host concurrency, speed limits (token bucket), scheduling windows, pause/resume | P1-M2 | Open |
+| P1-M2 | Engine core: probe → segment → fetch → assemble → verify | Rust CLI implementation in `engine/`; unit and real HTTP integration tests pass for documented behaviors (see root `TEST_REPORT.md`) | P1-M1 (contracts in architecture §3.6, §4, §9) | **Partial** — CLI works; local API and specified filename sanitisation are absent |
+| P1-M3 | Persistence + crash recovery | `.part` + checkpoint JSON with atomic writes; SIGKILL → restart → resume → byte-identical output vs fixture | P1-M2 | **Partial** — Ctrl-C pause/resume is tested; SIGKILL/atomic crash recovery gate not demonstrated |
+| P1-M4 | Scheduler + queue + throttling | Queue ordering, global/per-host concurrency, speed limits (token bucket), scheduling windows, pause/resume | P1-M2 | **Partial** — aggregate throttle exists and is tested; queue/scheduler do not exist |
 | P1-M5 | Local API + CLI | Loopback API (§3.6 methods) + CLI driver; API versioning + token auth | P1-M2, P1-M4 | Open |
-| P1-M6 | Browser extension spec + native-host prototype | MV3 manifest (minimal permissions), content script + service worker, native host with schema validation + framing tests (no browser required for host tests) | P1-M5 (API contract) | Open — spec in architecture §5; host in sibling area `extension/native-host/` |
-| P1-M7 | Media subsystem (narrow scope) | Unencrypted HLS master/media playlist parsing, variant listing, segment resolution, TS concat; encrypted/live refusal paths with typed errors | P1-M2 | Open |
-| P1-M8 | Test harness + Phase 1 test report | Local HTTP fixture server (§16.2 in architecture); unit + crash-recovery + checkpoint-corruption + media + host-contract tests; written report with method, environment (Linux VM, Node 24.20.0), and real measured results or `not-run` | P1-M2…P1-M7 | Open — **this is the Phase 1 exit evidence** |
+| P1-M6 | Browser extension spec + native-host prototype | MV3 manifests, content scripts and service workers exist; native host with schema validation/framing tests is still required | P1-M5 (API contract) | **Partial** — extension sources exist; host integration absent and browsers untested |
+| P1-M7 | Media subsystem (narrow scope) | Unencrypted HLS master/media playlist parsing, variant listing, segment resolution, TS concat; encrypted/live refusal paths with typed errors | P1-M2 | **Partial** — static playlist parsing and FFmpeg command builder tested; segment transfer/job execution absent |
+| P1-M8 | Test harness + Phase 1 test report | Local HTTP fixture server (§16.2 in architecture); unit + crash-recovery + checkpoint-corruption + media + host-contract tests; written report with method and real measured results or `not-run` | P1-M2…P1-M7 | **Partial** — root `TEST_REPORT.md`; SIGKILL, checkpoint corruption and host contract gates remain unverified |
 | P1-M9 | Decision convergence | D-04 (host transport), D-06 (checkpoint suffix/layout) settled and recorded; D-01/D-02 recommendations written for Phase 2 (not yet executed) | P1-M6, P1-M3 | Open |
 
 ### 1.2 What Phase 1 deliberately does NOT include
 
-- No Tauri app, no Rust engine core, no Windows installer (no
-  toolchain, no Windows machine — architecture §1.3).
+- No Tauri app and no verified Windows installer (Windows machine unavailable; the standalone Rust CLI exists and is documented in root `AUDIT.md`).
 - No automatic browser capture, no traffic interception, no site
   grabber, no clipboard monitoring (see feature-matrix gaps).
 - No DRM/encrypted-media handling beyond refusal (architecture §6.4).
@@ -120,29 +119,29 @@ not a date.
 ## Phase 2 — Tauri / Windows packaging + real Windows testing
 
 **Goal:** turn the proven Linux engine design into a real desktop
-app a Windows user can install and run, and prove it on a real
-Windows machine. This phase **cannot be completed in the current
-Linux-only VM** — it requires environment changes listed in §2.1.
+app a Windows user can install and run, and prove it on Windows. The
+Tauri shell and installer pass a CI install/start smoke test; P2 exit
+evidence still requires interactive Windows and end-to-end browser tests.
 
 ### 2.1 Prerequisites (environment changes, not code)
 
 | Prerequisite | Why it blocks Phase 2 | Status |
 |---|---|---|
-| A real Windows test machine (physical or VM, with admin for install testing) | Installer, WebView2, Native Host registry, power management, and browser integration cannot be verified on Linux | **Not available** — must be provisioned before Phase 2 testing |
-| Rust toolchain (stable, pinned version) + cargo | Tauri 2 builds require Rust; `rustc` is absent on the current VM (verified 2026-10-21) | **Not installed** |
-| Chromium/Chrome + Firefox on the Windows test machine | Browser extension testing (MV3 install, Native Messaging registration, handoff) | Not available until test machine exists |
+| Windows test environment | Installer, WebView2, Native Host registry and browser integration require Windows | **GitHub `windows-latest` CI is available for build/install/start smoke tests; no interactive Windows 10/11 browser test machine is available** |
+| Rust toolchain (stable, pinned version) + cargo | Tauri 2 builds require Rust | **Installed on Linux (Rust 1.96.1); pinning and Windows runner validation remain** |
+| Chromium/Chrome + Firefox on Windows | Browser extension testing (MV3 install, Native Messaging registration, handoff) | No interactive browser test has been run; Firefox remains incomplete |
 | Test accounts / public test files (licence-free) for Windows runs | Deterministic, lawful test content (no copyrighted/DRM material) | To be assembled at Phase 2 start |
 
 ### 2.2 Milestones
 
 | ID | Milestone | Deliverable / evidence | Depends on | Status |
 |---|---|---|---|---|
-| P2-M1 | Toolchain + Tauri shell | Rust installed (pinned), Tauri 2 project scaffolding, empty window runs on Windows | §2.1 prerequisites | Open |
-| P2-M2 | Engine decision executed (D-01) | Written decision: port engine core to Rust, or bundle Node runtime — with reasons + cost. Then the chosen core implemented to the §3.6 API contract | P1 exit gate, P2-M1 | Open |
-| P2-M3 | UI shell decision executed (D-02, D-03) | Tauri 2 (or documented fallback) + React/TS/Tailwind + state library; views: Downloads, Queue/Scheduler, Categories, Media, Settings | P2-M1 | Open |
-| P2-M4 | UI ↔ engine integration | Frontend calls Tauri commands 1:1 with §3.6 methods; reconnect + stale-state + offline-banner behaviour (§7.4) demonstrated on Windows | P2-M2, P2-M3 | Open |
-| P2-M5 | Windows browser integration | MV3 extension installed in Chrome/Edge on Windows; Native Messaging host registered (registry path); handoff → engine job demonstrated end-to-end; Firefox assessment written (ship or defer with reasons) | P2-M2, §2.1 browsers | Open |
-| P2-M6 | Windows packaging | Installer built in the chosen format (D-11: MSI vs MSIX vs portable ZIP); install → run → uninstall cleanly on the test machine; no leftover services/registry entries after uninstall (verified) | P2-M4, P2-M5 | Open |
+| P2-M1 | Toolchain + Tauri shell | Tauri 2 project, real window, bundled resources and Windows startup smoke | §2.1 prerequisites | **Partial** — CI build and startup smoke pass; interactive Win 10/11 validation pending |
+| P2-M2 | Engine decision executed (D-01) | Rust engine integrated to the §3.6 service contract, with persistence and lifecycle control | P1 exit gate, P2-M1 | **Partial** — Tauri launches/resumes `dm`; pause/cancel pass Linux and Windows CI engine tests, with persisted JSON settings/history and configurable concurrency; full API and SQLite remain absent |
+| P2-M3 | UI shell decision executed (D-02, D-03) | Tauri 2 + React/TS/Tailwind views | P2-M1 | **Partial** — ten views run in Tauri; priority/reordering, scheduler and historical speed charts remain incomplete |
+| P2-M4 | UI ↔ engine integration | Frontend calls commands, shows actual progress and persists jobs | P2-M2, P2-M3 | **Partial** — progress/speed/ETA, queue dispatch, settings, history, checkpoint resume and pause/cancel implemented; Windows E2E passed desktop lifecycle through completion/cancel. Settings-load timing assertion is being fixed before browser E2E. |
+| P2-M5 | Windows browser integration | MV3 extension installed; Native Messaging registration and handoff demonstrated; Firefox decision documented | P2-M2, §2.1 browsers | **Partial** — host, shared job records and Chromium registration UI implemented; browser handshake untested; Firefox incomplete |
+| P2-M6 | Windows packaging | NSIS installer builds, installs, starts and uninstalls cleanly | P2-M4, P2-M5 | **Partial** — Tauri NSIS build/install/start smoke passes in CI; uninstall and interactive user-machine tests pending; MSI not implemented |
 | P2-M7 | Media Phase 2 | fMP4 remux via ffmpeg (D-10) if verified; DASH polish; segment handling for fMP4; encrypted-refusal re-tested on Windows | P2-M2 | Open |
 | P2-M8 | Scheduler / queue polish | Queue pre-emption decision (D-08) executed or deferred with reasons; shutdown-on-complete + prevent-sleep on Windows power APIs, tested (not just coded) | P2-M4 | Open |
 | P2-M9 | Phase 2 test report (Windows) | Written report: Windows version/build, hardware, browsers tested, installer tested, handoff tested, media tested, known failures listed. Every Windows claim in this report is backed by a run on the test machine — anything else stays `not-verified` | P2-M1…P2-M8 | Open — **this is the Phase 2 exit evidence** |

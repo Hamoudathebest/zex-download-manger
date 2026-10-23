@@ -1,12 +1,10 @@
 Windows Registry Editor Version 5.00
 ; ============================================================================
 ; Download Manager Companion — Native Messaging host registration (EXAMPLE)
-; *** NOT TESTED ON WINDOWS HERE ***
-; This VM has no Windows machine, so these steps are a template for the
-; desktop-app installer / a user on Windows to adapt and verify. Do NOT
-; assume they work untested: verify on a real Windows + Chrome/Edge/Brave
-; install before shipping, and prefer having the desktop installer write
-; these keys itself (with the real install path and extension ID).
+; *** EXAMPLE — NOT TESTED ON WINDOWS ***
+; The native-host executable now exists in engine/target/release after
+; building the Rust crate. This example still requires a real extension ID,
+; manifest path and installed binary path; no installer writes these keys yet.
 ;
 ; What this does:
 ;   Tells Chrome (HKCU key below) where to find the host manifest JSON.
@@ -21,7 +19,7 @@ Windows Registry Editor Version 5.00
 ;      chrome://extensions (Developer mode -> the unpacked extension's ID,
 ;      or the Web Store ID once published).
 ;   2. Replace C:\Program Files\DownloadManagerNextGen\... in that JSON
-;      with the real installed host executable path.
+;      with the real installed dm-native-host.exe path.
 ;   3. Copy that JSON to the SAME path used in the registry value below
 ;      (or edit the value to point at the JSON's real location).
 ;   4. Double-click this .reg file (or merge it with regedit) as the

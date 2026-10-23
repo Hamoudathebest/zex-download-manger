@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { loadEngineState, type DownloadsData } from './data/downloads'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  cancelDesktopDownload,
+  clearDesktopHistory,
+  isDesktopRuntime,
+  loadEngineState,
+  pauseDesktopDownload,
+  resumeDesktopDownload,
+  startDesktopDownload,
+  type DownloadsData,
+} from './data/downloads'
 import { previewDownloads } from './data/preview'
 import Dashboard from './pages/Dashboard'
 import ActiveDownloads from './pages/ActiveDownloads'
@@ -12,7 +21,7 @@ import DownloadHistory from './pages/DownloadHistory'
 import Settings from './pages/Settings'
 import PerformanceStatistics from './pages/PerformanceStatistics'
 
-export const ROUTES = [
+const ROUTES = [
   { slug: 'dashboard', label: 'Dashboard' },
   { slug: 'active', label: 'Active Downloads' },
   { slug: 'completed', label: 'Completed Downloads' },
@@ -41,6 +50,9 @@ export default function App() {
   })
   const [preview, setPreview] = useState(false)
   const [query, setQuery] = useState('')
+  const [downloadUrl, setDownloadUrl] = useState('')
+  const [addError, setAddError] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [data, setData] = useState<DownloadsData>({ connection: 'loading', engine: null, error: null })
   const searchRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -58,9 +70,71 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController()
-    loadEngineState(controller.signal).then(setData)
-    return () => controller.abort()
+    const refresh = () => loadEngineState(controller.signal).then((next) => {
+      if (!controller.signal.aborted) setData(next)
+    })
+    void refresh()
+    const timer = isDesktopRuntime() ? window.setInterval(() => void refresh(), 1000) : undefined
+    return () => {
+      controller.abort()
+      if (timer !== undefined) window.clearInterval(timer)
+    }
   }, [])
+
+  async function addDownload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setAdding(true)
+    setAddError(null)
+    try {
+      await startDesktopDownload(downloadUrl.trim())
+      setDownloadUrl('')
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function resumeDownload(id: string) {
+    setAdding(true)
+    setAddError(null)
+    try {
+      await resumeDesktopDownload(id)
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function pauseDownload(id: string) {
+    try {
+      await pauseDesktopDownload(id)
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function cancelDownload(id: string) {
+    setAddError(null)
+    try {
+      await cancelDesktopDownload(id)
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function clearHistory() {
+    try {
+      await clearDesktopHistory()
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
 
   // "/" focuses search; Escape clears it. Navigation focus moves to main on route change.
   useEffect(() => {
@@ -84,6 +158,10 @@ export default function App() {
   const props = {
     items, connection: preview ? 'preview' : data.connection, error: data.error,
     preview, onTogglePreview: () => setPreview((p) => !p),
+    onResumeDownload: isDesktopRuntime() && !preview ? resumeDownload : undefined,
+    onPauseDownload: isDesktopRuntime() && !preview ? pauseDownload : undefined,
+    onCancelDownload: isDesktopRuntime() && !preview ? cancelDownload : undefined,
+    onClearHistory: isDesktopRuntime() && !preview ? clearHistory : undefined,
   }
 
   return (
@@ -93,7 +171,7 @@ export default function App() {
       </a>
       <div className="flex min-h-screen flex-col md:flex-row">
         <nav aria-label="Primary" className="w-full shrink-0 border-b border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:w-64 md:border-r md:border-b-0">
-          <p className="mb-4 text-lg font-bold">Download Manager <span className="block text-xs font-normal text-gray-500">Phase 1 web prototype</span></p>
+          <p className="mb-4 text-lg font-bold">ZEX Download Manager <span className="block text-xs font-normal text-gray-500">{isDesktopRuntime() ? 'Desktop development build' : 'Web preview'}</span></p>
           <ul className="flex flex-row flex-wrap gap-1 md:flex-col">
             {ROUTES.map((r) => (
               <li key={r.slug}>
@@ -134,6 +212,28 @@ export default function App() {
               placeholder="Search downloads… (press / to focus)"
               className="w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             />
+            {isDesktopRuntime() && (
+              <form onSubmit={addDownload} className="mt-3 flex max-w-3xl gap-2">
+                <label className="sr-only" htmlFor="new-download-url">Download URL</label>
+                <input
+                  id="new-download-url"
+                  type="url"
+                  required
+                  value={downloadUrl}
+                  onChange={(event) => setDownloadUrl(event.target.value)}
+                  placeholder="Paste an http(s) download URL"
+                  className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                />
+                <button
+                  type="submit"
+                  disabled={adding}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {adding ? 'Adding…' : 'Add download'}
+                </button>
+                {addError && <p role="alert" className="self-center text-sm text-red-600">{addError}</p>}
+              </form>
+            )}
           </div>
           <main id="main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-5xl px-4 py-6 outline-none">
             {route === 'dashboard' && <Dashboard {...props} />}
@@ -148,7 +248,9 @@ export default function App() {
             {route === 'stats' && <PerformanceStatistics {...props} />}
           </main>
           <footer className="px-4 pb-6 text-center text-xs text-gray-500 dark:text-gray-400">
-            Phase 1 prototype — web only. Tauri / Windows packaging is Phase 2 and is not built or claimed here.
+            {isDesktopRuntime()
+              ? 'ZEX desktop development build — downloads are handled by the Rust engine.'
+              : 'Web preview — live downloads require the packaged ZEX desktop application.'}
           </footer>
         </div>
       </div>

@@ -1,12 +1,15 @@
 # Release engineering — DevOps & release plan (Agent 10, Phase 1)
 
-> **Correction (GitHub integration work, 2026-10-21):** the
-> workflows in `.github/workflows/` have since been rewritten as
-> real build/release workflows (see `windows-build.yml` and
-> `release.yml`). They are still **unrun** — no Windows runner has
-> executed them yet — but they are no longer plan-only skeletons.
-> The "PLAN ONLY" wording elsewhere in this document is stale;
-> the workflow files themselves are authoritative.
+> **Current status (2026-10-23):** Windows run `39866677122` passed Rust,
+> engine integration, Native Messaging, Tauri build, NSIS install/start,
+> media and extension syntax checks on `windows-latest`. This branch adds
+> desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in
+> run `39928995290`; run `39934826380` passed desktop lifecycle actions
+> through completion and Cancel. Run `39936797146` passed settings save,
+> queue insertion and Pause, then hit an async settings-load assertion race.
+> Manual Windows 10/11 user-machine testing remains open. This document
+> remains the original release plan; root
+> `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.
 >
 > **Status: PLAN ONLY — NOT BUILT HERE.**
 >

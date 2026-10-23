@@ -47,6 +47,8 @@ DM_BIN = os.environ.get(
     os.path.join(os.path.dirname(os.path.abspath(__file__)),
                  "..", "target", "release", "dm"),
 )
+if os.name == "nt" and not DM_BIN.lower().endswith(".exe"):
+    DM_BIN += ".exe"
 
 
 def make_fixture(path):
@@ -95,7 +97,11 @@ class UnknownHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/octet-stream")
         # Deliberately NO Content-Length and NO Accept-Ranges.
         self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # The range probe deliberately drops this ignored-Range response.
+            pass
 
 
 class EngineTests(unittest.TestCase):
@@ -172,10 +178,13 @@ class EngineTests(unittest.TestCase):
         proc = subprocess.Popen(
             [DM_BIN, self.file_url, dest, "--connections", "4",
              "--throttle", "256k"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
         time.sleep(2.5)
         self.assertIsNone(proc.poll(), "dm finished before SIGINT (too fast?)")
-        proc.send_signal(signal.SIGINT)
+        proc.send_signal(
+            signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
         _, stderr = proc.communicate(timeout=30)
         print(f"[03] pause rc={proc.returncode}")
         self.assertEqual(proc.returncode, 130, stderr)
@@ -247,9 +256,12 @@ class EngineTests(unittest.TestCase):
         proc = subprocess.Popen(
             [DM_BIN, self.file_url, dest, "--connections", "2",
              "--throttle", "256k"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
         time.sleep(1.5)
-        proc.send_signal(signal.SIGINT)
+        proc.send_signal(
+            signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
         proc.communicate(timeout=30)
         self.assertEqual(proc.returncode, 130)
         with open(ckpt) as f:
@@ -281,6 +293,49 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(os.path.getsize(dest), FIXTURE_SIZE)
         self.assertEqual(sha256_of(dest), self.expected_sha)
+
+    def test_11_control_file_pause_and_resume(self):
+        dest = self._out("controlled-resume.bin")
+        control = dest + ".control"
+        proc = subprocess.Popen(
+            [DM_BIN, self.file_url, dest, "--connections", "4",
+             "--throttle", "256k", "--control-file", control],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
+        time.sleep(1.0)
+        with open(control, "w") as f:
+            f.write("pause\n")
+        _, stderr = proc.communicate(timeout=30)
+        self.assertEqual(proc.returncode, 130, stderr)
+        self.assertTrue(os.path.isfile(dest + ".part"))
+        self.assertTrue(os.path.isfile(dest + ".checkpoint.json"))
+        self.assertFalse(os.path.exists(control))
+
+        resumed = self._run([self.file_url, dest, "--resume", "--control-file", control,
+                             "--sha256", self.expected_sha])
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(sha256_of(dest), self.expected_sha)
+        self.assertFalse(os.path.exists(control))
+
+    def test_12_control_file_cancel_removes_partial_state(self):
+        dest = self._out("controlled-cancel.bin")
+        control = dest + ".control"
+        proc = subprocess.Popen(
+            [DM_BIN, self.file_url, dest, "--connections", "4",
+             "--throttle", "256k", "--control-file", control],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                           if os.name == "nt" else 0))
+        time.sleep(1.0)
+        with open(control, "w") as f:
+            f.write("cancel\n")
+        _, stderr = proc.communicate(timeout=30)
+        self.assertEqual(proc.returncode, 131, stderr)
+        self.assertFalse(os.path.exists(dest))
+        self.assertFalse(os.path.exists(dest + ".part"))
+        self.assertFalse(os.path.exists(dest + ".checkpoint.json"))
+        self.assertFalse(os.path.exists(control))
 
 
 if __name__ == "__main__":

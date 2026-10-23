@@ -1,10 +1,30 @@
 # GitHub push access — diagnosis
 
-Status: **push blocked, not abandoned.** The code in this repository is
-complete for Phase 1 and ready to push. The blocker is GitHub App
-installation scope, not the code, not the workflow, and not a secret.
+Status (2026-10-22 current VPS check): **authenticated write access verified.**
+GitHub CLI is logged in as `Hamoudathebest`, and repository API permissions
+include `push` and `admin`. Commit `930d810` is published on
+`engineering/audit-windows-ci`; PR #1 targets `main`. `main` has no branch
+protection configured. The release workflow token has `contents: write`.
+The initial anonymous-session findings are retained below as historical
+context only.
 
-## Evidence
+## Current VPS evidence
+
+| Item | Verified value |
+| --- | --- |
+| Repository | `Hamoudathebest/zex-download-manger` |
+| Visibility/read | Public; anonymous `git ls-remote` and HTTPS clone succeeded |
+| GitHub CLI | `gh 2.97.0`; authenticated as `Hamoudathebest` |
+| Remote permissions | `push`, `admin`, `maintain`, `pull`, `triage` |
+| Branch protection | `main` is not protected (GitHub API 404: no protection rules) |
+| Published branch | `engineering/audit-windows-ci` at commit `930d810452c0d5a484b9b044d024aa67039fcc24` |
+| Pull request | [#1](https://github.com/Hamoudathebest/zex-download-manger/pull/1), base `main`, open |
+
+## Prior connector report (2026-10-21; historical, not revalidated here)
+
+The following evidence was recorded by a prior connector workflow. It is
+retained as context, not treated as proof of current account or app
+permissions:
 
 | Item | Verified value |
 | --- | --- |

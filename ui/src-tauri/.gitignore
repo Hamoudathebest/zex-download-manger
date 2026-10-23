@@ -1,0 +1,5 @@
+/target/
+/gen/
+/icons/*
+!/icons/icon.ico
+/icons-source/

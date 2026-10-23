@@ -158,6 +158,15 @@ $('sendPageBtn').addEventListener('click', async () => {
   await sendUrl(currentTab.url, currentTab.url);
 });
 
+$('sendUrlBtn').addEventListener('click', async () => {
+  const url = $('manualUrl').value.trim();
+  if (!isHttpUrl(url)) {
+    setResult('Enter a valid http(s) URL.', false);
+    return;
+  }
+  await sendUrl(url, null);
+});
+
 async function sendUrl(url, pageUrl) {
   lastFailedUrl = null;
   $('browserDownloadBtn').hidden = true;

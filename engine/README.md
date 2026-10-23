@@ -5,8 +5,10 @@ skeleton. See "Why Rust shipped" below.
 
 ## What this is
 
-`dm`: a parallel, resumable HTTP/HTTPS download engine. Single binary,
-no runtime dependencies beyond system libc.
+`dm`: a parallel, resumable HTTP/HTTPS download engine. The crate also
+builds `dm-native-host`, a standard-input/output Native Messaging adapter
+that validates a user-selected URL and starts `dm` in the user's Downloads
+directory. These binaries do not yet form a Tauri desktop application.
 
 - HTTP/HTTPS with redirect following (max 10) and rustls TLS
 - Range detection via HEAD + `Range: bytes=0-0` probe
@@ -25,6 +27,7 @@ no runtime dependencies beyond system libc.
 
 Full design, checkpoint format, segment model and limits: [SPEC.md](SPEC.md).
 Real test outputs: [TEST_NOTES.md](TEST_NOTES.md).
+The Native Messaging frame protocol tests are in `tests/test_native_host.py`.
 
 ## Why Rust shipped (and no Python reference)
 
@@ -53,7 +56,7 @@ format (documented in SPEC.md §4).
 cd ~/workspace/download-manager/engine
 export PATH="$HOME/.cargo/bin:$PATH"   # only if rustup is not on PATH
 cargo build --release
-# binary: target/release/dm
+# binaries: target/release/dm and target/release/dm-native-host
 ```
 
 A prebuilt Linux binary is kept at `target/release/dm` (5.5 MB; the
@@ -83,11 +86,12 @@ dm https://example.com/big.iso ./big.iso --restart       # discard partial, star
 | `--restart` | Discard `.part`/checkpoint and start fresh |
 | `--sha256 HEX` | Expected SHA-256; mismatch blocks the rename |
 | `--checkpoint PATH` | Checkpoint path (default `<DEST>.checkpoint.json`) |
+| `--control-file PATH` | Watch for `pause` or `cancel`; pause saves a checkpoint and cancel removes the partial state |
 | `--max-retries N` | Retries per segment (default 5) |
 | `--help`, `-h` | Show help |
 
 Exit codes: `0` success, `1` error/hash mismatch/resume refused,
-`2` usage error, `130` paused via Ctrl-C (checkpoint saved).
+`2` usage error, `130` paused (checkpoint saved), `131` cancelled (partial file removed).
 
 ## Files
 
@@ -95,11 +99,14 @@ Exit codes: `0` success, `1` error/hash mismatch/resume refused,
 |------|-----------|
 | `Cargo.toml`, `Cargo.lock` | Crate manifest + pinned dependencies |
 | `src/main.rs` | CLI, probe, segment workers, retry, progress, SHA-256, orchestration |
+| `src/native_host.rs` | Native Messaging framing, URL validation, destination selection, engine launch |
 | `src/checkpoint.rs` | Checkpoint JSON format, segment splitting |
 | `src/throttle.rs` | Shared token-bucket throttle |
 | `SPEC.md` | Design spec (this document's companion) |
 | `TEST_NOTES.md` | Real test results (sizes, hashes, timings, pass/fail) |
-| `tests/test_engine.py` | Engine integration tests (drive the real `dm` binary) |
+| `tests/test_engine.py` | CLI integration tests (drive the real `dm` binary), including control-file pause/resume/cancel |
+| `tests/test_native_host.py` | Protocol tests (drive the real `dm-native-host` binary) |
+| `tests/test_native_host_download.py` | Real host-to-engine loopback download and shared-state test |
 | `tests/test_server.py`, `tests/downloader.py`, `tests/test_downloads.py`, `tests/run_tests.py` | Pre-existing sibling QA harness (not modified by the engine work; its README still says "engine-integration tests are PENDING" — that note is now stale, superseded by `test_engine.py`) |
 | `target/release/dm` | Prebuilt Linux binary |
 
@@ -107,12 +114,14 @@ Exit codes: `0` success, `1` error/hash mismatch/resume refused,
 
 ```sh
 cd ~/workspace/download-manager/engine/tests
-python3 -m unittest -v test_engine     # engine integration: 10 tests
+python3 -m unittest -v test_engine     # engine integration: 12 tests
 python3 -m unittest -v test_downloads  # sibling harness: 9 tests
-cd .. && cargo test --release          # Rust unit tests: 2 tests
+python3 -m unittest -v test_native_host test_native_host_download
+cd .. && cargo test --release          # Rust unit tests for both binaries
 ```
 
-All three suites pass on this VM (see TEST_NOTES.md for the numbers).
+The CLI, Native Messaging host, and sibling harness suites pass on Linux;
+the Windows runner additionally exercises the host-to-engine transfer.
 Tests use only loopback HTTP (`127.0.0.1`); no external network, no
 DRM circumvention, no production system touched. Nothing outside
 `~/workspace/download-manager/engine/` was modified by this work

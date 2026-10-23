@@ -1,6 +1,6 @@
-# Download Manager — System Architecture (Phase 1, Chief Architect)
+# Download Manager — System Architecture (Phase 1 design baseline)
 
-> **Status:** Foundation / design document — Phase 1 Linux prototype.
+> **Status:** Historical foundation/design baseline. The implementation inventory and current test evidence are maintained in the root `AUDIT.md` and `TEST_REPORT.md`; those supersede environment and implementation-status statements below.
 > **Author role:** Agent 1 — Chief Architect (Phase 1).
 > **Scope boundary:** Work under `~/workspace/download-manager/` only. No production
 > system, no TitanGuard / quest-bot code, and no Windows machine was touched.
@@ -10,8 +10,7 @@
 > - No authorized Internet Download Manager (IDM) binary was available in this
 >   environment, and **no IDM binary was downloaded, decompiled, copied, or
 >   reverse-engineered** in this work.
-> - No Windows `.exe` / `.msi` was built here. The VM is Linux-only (see
->   §1.3), Rust is **not** preinstalled, and Tauri/Windows packaging is a
+> - No Windows `.exe` / `.msi` has been built or run on this Linux host. Rust is now installed and a Rust CLI download engine exists; Tauri/Windows packaging is a
 >   **planned Phase 2** activity, not a Phase 1 result.
 > - Every claim about IDM in this document and in `feature-matrix.md` is
 >   labelled `public-doc` (public IDM documentation / widely described public
@@ -36,7 +35,7 @@
 4. [Download engine — detailed design](#4-download-engine--detailed-design)
 5. [Browser extension (MV3 + Native Messaging)](#5-browser-extension-mv3--native-messaging)
 6. [Media subsystem](#6-media-subsystem)
-7. [Desktop UI (Tauri 2 + React / TypeScript / Tailwind — planned)](#7-desktop-ui-tauri-2--react--typescript--tailwind--planned)
+7. [Desktop UI (Tauri 2 + React / TypeScript / Tailwind — partial implementation)](#7-desktop-ui-tauri-2--react--typescript--tailwind--partial-implementation)
 8. [Scheduler and queue](#8-scheduler-and-queue)
 9. [Persistence, checkpointing, and file formats](#9-persistence-checkpointing-and-file-formats)
 10. [Data flows (end to end)](#10-data-flows-end-to-end)
@@ -85,22 +84,22 @@
 | A cloud account, sync service, or telemetry backend | No server component in Phase 1. All state is local. |
 | Claiming IDM parity | Parity is a Phase 3 evaluation question, judged against public docs + real Windows testing — not asserted now. |
 
-### 1.3 Environment constraints actually present (verified 2026-10-21)
+### 1.3 Environment constraints recorded in the original baseline (2026-10-21)
 
 | Fact | Value / evidence |
 |---|---|
 | Host OS | Linux VM (this workspace host). No Windows machine access. |
 | Node.js | v24.20.0 (`node --version`, verified this session) |
 | Python | 3.12.3 (`python3 --version`, verified this session) |
-| Rust toolchain | **Not installed** (`rustc: command not found`, verified this session). Tauri 2 cannot be built here until a toolchain is installed — hence Tauri is `planned`, not `built`. |
+| Rust toolchain | Rust/Cargo 1.96.1 are installed on the current VPS (verified 2026-10-22; see root `AUDIT.md`). A Tauri 2 shell is implemented; Windows build/installer validation is pending. |
 | IDM binary | None available; none fetched. |
 | Other agents' areas | `engine/`, `extension/`, `ui/`, `specs/` directories exist in the shared project tree (scaffolded by sibling agents). This document does not modify their code; it defines the contracts their code should satisfy. Where a sibling implementation already diverges from this doc, the divergence is an open decision (§17), not a silent override. |
 
-**Consequence for Phase 1 prototyping:** the runnable prototype is
-Node.js (and, where convenient, Python for tooling/tests) on Linux. The
-engine core is specified language-agnostically in §4 so that a later
-Rust/Tauri port does not require a redesign — but Phase 1 does **not**
-pretend the Rust core exists.
+**Current implementation:** a Rust CLI download engine exists in
+`engine/` and has passed local loopback tests; it does not yet implement
+the local API, scheduler, or desktop integration described in this
+design. The existing React UI remains a disconnected prototype. Refer
+to `AUDIT.md` for verified scope and `TEST_REPORT.md` for test results.
 
 ### 1.4 Design principles
 
@@ -691,12 +690,19 @@ A media job is a normal download job (§9) plus:
 
 ---
 
-## 7. Desktop UI (Tauri 2 + React / TypeScript / Tailwind — planned)
+## 7. Desktop UI (Tauri 2 + React / TypeScript / Tailwind — partial implementation)
 
-> **Status of this whole section: `planned`.** No Tauri app was built
-> in Phase 1 (no Rust toolchain on this VM, §1.3). This section is
-> the design the Phase 2 team builds against, not a description of
-> existing code.
+> **Current status:** `ui/src-tauri/` provides a Tauri 2 shell and backend
+> commands to start/resume/pause/cancel the Rust CLI, list persisted jobs,
+> load/save settings, clear finished history, and register the Chromium
+> Native Messaging host. The frontend displays progress/speed/ETA and uses
+> a persisted concurrency queue. Linux compile/tests pass. New Windows UI
+> and browser E2E has verified settings, queue insertion and Pause through a
+> test-only WebView2 CDP window; the latest run exposed an async settings-load
+> timing assertion after restart. Manual user-machine verification remains
+> open. Priority/reordering and scheduler remain
+> unimplemented. This
+> section's remaining design points are future work, not shipped behavior.
 
 ### 7.1 Why Tauri 2 (rationale, and what would change the choice)
 
@@ -717,13 +723,14 @@ A media job is a normal download job (§9) plus:
   as decision D-02, to be settled with real Windows evidence, not
   here.
 
-### 7.2 Frontend stack (planned)
+### 7.2 Frontend stack (current and planned)
 
 - **React 18+ + TypeScript (strict)** — component model, type safety
   for the job/segment state shapes in §9.
 - **Tailwind CSS** — utility styling; dark/light themes via CSS
   variables; no custom design system in Phase 1.
-- **State:** a small store (Zustand or equivalent, `planned` — final
+- **State:** the current implementation polls persisted state at 1 Hz;
+  an event-based store (Zustand or equivalent, `planned` — final
   pick is D-03) holding job list + selected job + scheduler state,
   fed by the engine event stream (§3.6). The store is a *cache* of
   engine state, never the source of truth: on reconnect it re-syncs
@@ -732,21 +739,21 @@ A media job is a normal download job (§9) plus:
   Queue & Scheduler, Categories, Media (playlist jobs), Settings.
   One window in Phase 1; floating mini-progress window is Phase 3.
 
-### 7.3 Tauri command surface (planned, mirrors §3.6)
+### 7.3 Tauri command surface (partial)
 
-The frontend calls Tauri commands that map 1:1 to engine API methods
-(`download_add`, `download_pause`, …). The Rust side validates
-arguments again (never trust the frontend), then forwards to the
-engine core. In Phase 2 the engine core may *be* the Rust side; in
-the interim (Tauri shell over the Node engine), the Rust side proxies
-to the loopback API. Either way the frontend sees the same commands.
+Implemented commands are `start_download`, `resume_download`,
+`pause_download`, `cancel_download`, `list_downloads`, `get_settings`,
+`save_settings`, `clear_history`, and `pair_chromium_extensions`. They invoke
+the packaged Rust CLI, use checkpoint/control files for lifecycle actions,
+apply persisted folder/connections/retry/throttle/concurrency settings, and
+persist job state. Priority/reordering, scheduler operations and event
+subscriptions from the full §3.6 contract remain unimplemented.
 
 ### 7.4 UI ↔ engine sync and offline behaviour
 
-- On launch, UI requests `engine.status` + `download.list`, then
-  subscribes to the event stream. Progress updates are throttled
-  (e.g. max 4 updates/sec/job) to avoid re-render storms — the
-  engine emits at most that rate; the UI does not poll in a loop.
+- On launch, the UI loads persisted records and polls the backend once
+  per second. The CLI progress stream updates observed bytes/total;
+  unavailable speed remains null. An event stream is future work.
 - If the engine disconnects, the UI shows a persistent "engine
   offline" banner, keeps the last known job list (marked stale), and
   disables mutating actions. It does not invent progress.

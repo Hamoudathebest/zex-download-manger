@@ -1,4 +1,4 @@
-# Windows installer (NSIS, Phase 2)
+# Legacy CLI installer script (NSIS)
 
 ## What it is
 
@@ -15,28 +15,29 @@ The shortcut points at the CLI engine, not a GUI. There is no Tauri
 desktop app yet, so `dm.exe` must be run from a terminal, for example
 `dm <URL> <DEST>`. The installer does not pretend otherwise.
 
-## How CI builds it
+## Standalone CLI installer
 
-In `.github/workflows/release.yml`, the NSIS step is gated twice:
+`download-manager.nsi` packages only the `dm.exe` CLI. It is not the
+desktop application installer and is not used by the current release
+workflow. The Tauri installer path is configured under `ui/src-tauri/`.
 
-1. It runs only if `installer/*.nsi` exists.
-2. It runs only if `makensis` is available on the runner
-   (`Get-Command makensis`); if makensis is missing, the step
-   records `nsis_built=false` and the release simply has no
-   installer artefact, instead of failing the whole release.
-
-When both gates pass, `makensis` produces
-`installer/download-manager-setup.exe`, which the packaging step
-copies into `dist/` and the release step uploads alongside the
-portable zip and the extension zips.
-
-To build it locally on Windows, from the repository root:
+To build the standalone CLI installer locally on Windows, from the repository root:
 
 ```powershell
 makensis installer/download-manager.nsi
 ```
 
 The output is `installer/download-manager-setup.exe`.
+
+## Tauri desktop installer
+
+The application NSIS bundle is configured in `ui/src-tauri/tauri.conf.json`.
+Windows run `39866677122` built it, silently installed it, and verified the
+desktop process remained running during the startup smoke test. New desktop
+and Native Messaging E2E run `39934826380` exercised desktop settings, queueing,
+Pause, restart/Resume, completion and Cancel. Run `39936797146` verified settings,
+queue insertion and Pause, then exposed an async reload assertion race. Browser
+Native Messaging remains unverified. Manual Windows 10/11 testing remains outstanding.
 
 ## Signing
 
@@ -45,10 +46,8 @@ warn about an unknown publisher. Signing is a separate, later step
 requiring a credential supplied through GitHub Secrets — never
 committed, never printed, never in chat.
 
-## MSI (WiX) — planned, not built
+## MSI (WiX) — not implemented
 
-An MSI installer via WiX is documented as planned in
-`docs/release.md`. No WiX project (`.wxs`) exists in this repository,
-and no MSI is produced by this script or by the release workflow.
-Do not claim an MSI exists until a WiX project actually builds one
-on a Windows runner.
+No WiX project (`.wxs`) exists in this repository, and no MSI is produced
+by either installer path. Do not claim an MSI exists until a WiX project
+actually builds one on a Windows runner.

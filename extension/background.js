@@ -21,8 +21,9 @@
 
 const NATIVE_HOST = 'com.downloadmanager.nextgen';
 
-// Message protocol shared with the (separately built) desktop host.
-// The host implementation is NOT in this repo (Phase 1 = extension only).
+// Message protocol shared with the Rust host in engine/src/native_host.rs.
+// The host is built separately; install/pairing is documented in
+// native-host/PAIRING.md and is not yet automated by an application installer.
 // Wire format is the standard Native Messaging framing: a 4-byte
 // little-endian length prefix followed by one UTF-8 JSON message.
 // Logical messages:

@@ -307,7 +307,7 @@ try {
   await page.getByRole('button', { name: 'Connections & speed' }).click()
   await waitForInputValue(page, 'Connections per download', '2')
   await waitForInputValue(page, 'Speed limit (KiB/s)', '512')
-  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  await page.getByRole('link', { name: 'Paused' }).click()
   row = await rowByName(page, 'paused.bin')
   if (!(await row.getByRole('button', { name: 'Resume', exact: true }).isVisible())) {
     throw new Error('Paused download was not resumable after restarting the desktop application.')

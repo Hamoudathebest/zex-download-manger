@@ -289,9 +289,11 @@ try {
 
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   await row.getByRole('button', { name: 'Pause', exact: true }).click()
+  await page.getByRole('link', { name: 'Paused' }).click()
   row = await waitStatus(page, 'paused.bin', 'paused')
   await row.getByRole('button', { name: 'Resume', exact: true }).waitFor({ state: 'visible', timeout })
   console.log('PASS Add Download and Pause created a resumable checkpoint')
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
   await waitStatus(page, 'queued.bin', 'active')
   await page.getByRole('link', { name: 'Completed Downloads' }).click()
   await waitStatus(page, 'queued.bin', 'completed')

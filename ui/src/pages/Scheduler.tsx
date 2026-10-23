@@ -1,30 +1,24 @@
-import { Card, DisabledActionNote, PageHeader } from '../components/ui'
+import { Card, DisabledActionNote, Icon, PageHeader } from '../components/ui'
 import type { PageProps } from './types'
+
+const scheduleStages = [
+  ['01', 'Choose a start window', 'Select allowed days and local time.'],
+  ['02', 'Select queued downloads', 'Run a selected queue when the window opens.'],
+  ['03', 'Apply bandwidth rules', 'Limit transfer speed during scheduled hours.'],
+]
 
 export default function Scheduler(_props: PageProps) {
   return (
     <div>
-      <PageHeader title="Scheduler" description="Time-based download rules. Schedules are prototype-only here and are not executed without an engine." />
-      <Card title="New schedule (prototype form — does not schedule anything)">
-        <form
-          onSubmit={(e) => e.preventDefault()}
-          aria-label="Schedule form (prototype only)"
-          className="grid max-w-lg gap-3"
-        >
-          <label className="grid gap-1">Schedule name
-            <input type="text" aria-label="Schedule name" placeholder="e.g. Overnight queue" className="rounded-md border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800" />
-          </label>
-          <label className="grid gap-1">Start time
-            <input type="time" aria-label="Start time" className="rounded-md border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800" />
-          </label>
-          <label className="grid gap-1">Days
-            <select aria-label="Days" className="rounded-md border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
-              <option>Weekdays</option><option>Weekends</option><option>Every day</option>
-            </select>
-          </label>
-          <button type="submit" disabled className="w-fit rounded-md bg-gray-300 px-3 py-2 font-medium text-gray-700 disabled:cursor-not-allowed disabled:opacity-60">Save schedule (disabled in prototype)</button>
-        </form>
-      </Card>
+      <PageHeader title="Scheduler" description="Plan recurring windows for downloads waiting in the queue." eyebrow="AUTOMATION" />
+      <div className="scheduler-layout">
+        <Card title="Schedule automation" icon="calendar">
+          <div className="scheduler-state"><span className="scheduler-state-icon"><Icon name="clock" size={19} /></span><div><strong>No schedules configured</strong><p>Scheduled execution is not available in this engine version.</p></div><span className="settings-state-pill">NOT ACTIVE</span></div>
+          <div className="scheduler-stages">{scheduleStages.map(([number, title, description]) => <div className="scheduler-stage" key={number}><span>{number}</span><div><strong>{title}</strong><small>{description}</small></div><Icon name="chevron-right" size={15} /></div>)}</div>
+          <button type="button" className="button button-secondary" disabled title="Scheduler automation is not implemented yet"><Icon name="plus" size={16} />Create schedule</button>
+        </Card>
+        <aside className="scheduler-side-card"><span className="scheduler-side-icon"><Icon name="info" size={17} /></span><strong>Current queue behavior</strong><p>Downloads begin when a slot opens, or when you explicitly start a held item. There are no time-of-day rules yet.</p><a href="#/queue">Review the queue <Icon name="chevron-right" size={14} /></a></aside>
+      </div>
       <DisabledActionNote />
     </div>
   )

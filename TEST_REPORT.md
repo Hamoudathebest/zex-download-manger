@@ -31,3 +31,18 @@ Loopback transfer timings are correctness diagnostics only and are not internet 
 | `zex-download-manager-setup-windows-x64.exe` | NSIS GUI installer | `18fa86fb18b88defcecc2efe17c468297051dfdf53f642483a85e3906817f6f4` |
 
 These checks establish a successful `windows-latest` build and install/start smoke only. `v0.2.0` is a development pre-release, not a stable release. No MSI, signed binary, Windows 10/11 interactive test, or live browser handshake exists yet.
+
+## Premium UI redesign checks — 2026-10-23
+
+The following checks were run on `feature/premium-ui-redesign`, based on `f4d96bb` and initially committed as `f387403`:
+
+| Check | Result | Command / details |
+|---|---|---|
+| UI production build | PASS | `cd ui && npm run build`; TypeScript and Vite production build succeeded. |
+| UI lint | PASS | `cd ui && npm run lint`; no warnings. |
+| Tauri Rust formatting and Clippy | PASS | `cd ui/src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings`. |
+| Tauri Rust tests | PASS — 9/9 | `cd ui/src-tauri && cargo test`; includes a new queue-dispatch test for manually held jobs. |
+| Windows E2E script syntax | PASS | `node --check ui/scripts/windows-desktop-e2e.mjs`; selectors updated for redesigned settings/dialog/history and a manual-start scenario added. |
+| Diff whitespace check | PASS | `git diff --check`. |
+| Chromium visual/accessibility replay | PASS for observed routes | Local Chromium replay visited Dashboard, Settings, Appearance/theme switch, Browser Integration, Queue and Performance routes. Captures were complete and reported no page errors; dashboard preview and browser-integration screenshots were reviewed at 1440×960. This is web-preview evidence, not Windows/Tauri desktop verification. |
+| Current Windows desktop/Native Messaging E2E | FAIL — run `40019817404` | Installer, Settings persistence, one-slot queueing, Pause/resumability and queued-fixture completion passed. After restart, E2E looked for the paused job in Active instead of Paused. The test now navigates to Paused before checking resume; Native Messaging assertions still await Windows execution. |

@@ -34,7 +34,7 @@ These checks establish a successful `windows-latest` build and install/start smo
 
 ## Premium UI redesign checks — 2026-10-23
 
-The following checks were run in the local `feature/premium-ui-redesign` worktree based on `f4d96bb` (changes are not yet committed):
+The following checks were run on `feature/premium-ui-redesign`, based on `f4d96bb` and initially committed as `f387403`:
 
 | Check | Result | Command / details |
 |---|---|---|
@@ -45,4 +45,4 @@ The following checks were run in the local `feature/premium-ui-redesign` worktre
 | Windows E2E script syntax | PASS | `node --check ui/scripts/windows-desktop-e2e.mjs`; selectors updated for redesigned settings/dialog/history and a manual-start scenario added. |
 | Diff whitespace check | PASS | `git diff --check`. |
 | Chromium visual/accessibility replay | PASS for observed routes | Local Chromium replay visited Dashboard, Settings, Appearance/theme switch, Browser Integration, Queue and Performance routes. Captures were complete and reported no page errors; dashboard preview and browser-integration screenshots were reviewed at 1440×960. This is web-preview evidence, not Windows/Tauri desktop verification. |
-| Current Windows desktop/Native Messaging E2E | NOT YET RE-RUN | Latest known run `39969263138` passed settings, queue, Pause/Resume across restart, completion and Cancel, then failed at direct navigation to the extension popup with `net::ERR_BLOCKED_BY_CLIENT`. The local workflow now opens the test popup from a loopback origin and verifies extension-worker load before the handshake; Windows CI must confirm the fix. |
+| Current Windows desktop/Native Messaging E2E | FAIL — run `40011941374` | Installer build and installation passed. E2E stopped when the Settings test tried to locate Connections & speed fields while the separate Downloads section was selected. The local test now navigates between those settings sections; the popup/Native Messaging change still awaits Windows execution. |

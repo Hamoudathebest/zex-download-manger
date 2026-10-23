@@ -255,6 +255,8 @@ try {
 
   await page.getByRole('link', { name: 'Settings' }).click()
   await page.getByLabel('Download folder').fill(downloadDirectory)
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await page.getByRole('button', { name: 'Connections & speed' }).click()
   await page.getByLabel('Connections per download').fill('2')
   await page.getByLabel('Maximum desktop downloads').fill('1')
   await page.getByLabel('Speed limit (KiB/s)').fill('512')
@@ -302,6 +304,7 @@ try {
   page = await appPage(desktopBrowser)
   await page.getByRole('link', { name: 'Settings' }).click()
   await waitForInputValue(page, 'Download folder', downloadDirectory)
+  await page.getByRole('button', { name: 'Connections & speed' }).click()
   await waitForInputValue(page, 'Connections per download', '2')
   await waitForInputValue(page, 'Speed limit (KiB/s)', '512')
   await page.getByRole('link', { name: 'Active Downloads' }).click()

@@ -5,8 +5,8 @@
 > media and extension syntax checks on `windows-latest`. This branch adds
 > desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in
 > run `39928995290`; run `39934826380` passed desktop lifecycle actions
-> through completion and Cancel, but Edge's TCP debug endpoint failed before
-> Native Messaging/browser tests.
+> through completion and Cancel. Run `39936797146` passed settings save,
+> queue insertion and Pause, then hit an async settings-load assertion race.
 > Manual Windows 10/11 user-machine testing remains open. This document
 > remains the original release plan; root
 > `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.

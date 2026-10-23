@@ -18,10 +18,10 @@ Windows 10/11 user-machine or interactive browser compatibility.
 Checkpointed interrupted/failed downloads can be resumed from Active
 Downloads, including after restart. Live speed/ETA, settings, history and a
 configurable concurrency queue are connected to desktop state. Pause/cancel
-pass Linux and Windows engine tests. Windows run `39934826380` passed settings,
-queueing, Pause, restart/Resume, completion and Cancel, then Edge did not expose
-the TCP debugging endpoint. Native Messaging actions are pending a managed-Edge
-rerun. Manual Windows interaction remains distinct.
+pass Linux and Windows engine tests. Windows run `39936797146` passed settings
+save, queue insertion and Pause. Its restart settings assertion read before the
+UI's asynchronous load; the test now waits for saved values. Native Messaging
+remains untested pending rerun. Manual Windows interaction remains distinct.
 Queue priority/reordering and
 scheduler are not implemented. DRM circumvention is not implemented.
 

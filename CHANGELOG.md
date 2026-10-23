@@ -14,9 +14,10 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 - Added Playwright/CDP Windows automation for Add, Pause, restart/Resume,
   completion hash, Cancel cleanup, queue/settings/history and real Chromium
   Native Messaging. Windows run `39934826380` passed desktop lifecycle actions
-  through Cancel, then Edge's TCP debugging endpoint failed before Native
-  Messaging. Browser automation now uses a Playwright-managed Edge context;
-  production artifacts remain built without debug flags.
+  through Cancel, but Edge's TCP debugging endpoint failed before Native
+  Messaging. Run `39936797146` attached and passed settings/queue/Pause; the
+  settings-after-restart assertion raced the asynchronous UI load. The test
+  now waits for that value; production artifacts remain built without debug flags.
   No manual GUI test is claimed.
 - Updated Tokio to 1.54.1 to address RustSec RUSTSEC-2026-0384. Added npm and
   RustSec dependency audit checks to CI; the Tauri Linux GTK dependency tree

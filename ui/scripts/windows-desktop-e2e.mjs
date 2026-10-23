@@ -176,6 +176,18 @@ async function waitForProgress(row) {
   throw new Error('Download did not report nonzero progress.')
 }
 
+async function waitForInputValue(page, label, expected) {
+  const input = page.getByLabel(label)
+  const deadline = Date.now() + 15_000
+  let observed = ''
+  while (Date.now() < deadline) {
+    observed = await input.inputValue().catch(() => '')
+    if (observed === expected) return
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  throw new Error(`Setting ${label} did not load after restart (expected ${expected}; got ${observed}).`)
+}
+
 async function closeApp(page, browser, process) {
   await page.keyboard.press('Alt+F4').catch(() => {})
   const deadline = Date.now() + 12_000
@@ -245,9 +257,9 @@ try {
   desktopBrowser = await connectBrowser(appPort, appProcess)
   page = await appPage(desktopBrowser)
   await page.getByRole('link', { name: 'Settings' }).click()
-  if (await page.getByLabel('Download folder').inputValue() !== downloadDirectory) throw new Error('Download folder setting did not persist across restart.')
-  if (await page.getByLabel('Connections per download (1–32)').inputValue() !== '2') throw new Error('Connection setting did not persist across restart.')
-  if (await page.getByLabel('Speed limit (KiB/s; 0 = unlimited)').inputValue() !== '512') throw new Error('Speed limit setting did not persist across restart.')
+  await waitForInputValue(page, 'Download folder', downloadDirectory)
+  await waitForInputValue(page, 'Connections per download (1–32)', '2')
+  await waitForInputValue(page, 'Speed limit (KiB/s; 0 = unlimited)', '512')
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   row = await rowByName(page, 'paused.bin')
   if (!(await row.getByRole('button', { name: 'Resume' }).isVisible())) {

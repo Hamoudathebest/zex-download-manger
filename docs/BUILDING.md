@@ -4,9 +4,9 @@
 > earlier Rust, engine integration, Native Messaging, Tauri build, NSIS
 > install/start smoke, media, and extension syntax checks. This revision adds
 > desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in run
-> `39928995290`; run `39934826380` passed the desktop lifecycle through
-> completion and Cancel but Edge's TCP debug endpoint failed before the
-> Native Messaging/browser test stage.
+> `39928995290`; run `39934826380` passed the desktop lifecycle and Cancel.
+> Run `39936797146` passed settings save, queue insertion and Pause, then
+> hit an async settings-load assertion race on restart; the test now waits.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >

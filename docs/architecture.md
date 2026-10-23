@@ -698,8 +698,8 @@ A media job is a normal download job (§9) plus:
 > Native Messaging host. The frontend displays progress/speed/ETA and uses
 > a persisted concurrency queue. Linux compile/tests pass. New Windows UI
 > and browser E2E has verified settings, queue insertion and Pause through a
-> test-only WebView2 CDP window; a missing fixture route stopped later tests.
-> Manual user-machine verification remains
+> test-only WebView2 CDP window; the latest run exposed an async settings-load
+> timing assertion after restart. Manual user-machine verification remains
 > open. Priority/reordering and scheduler remain
 > unimplemented. This
 > section's remaining design points are future work, not shipped behavior.

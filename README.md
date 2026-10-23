@@ -10,8 +10,9 @@ from scratch, in the open, with no proprietary code.
 > `windows-latest`, including engine lifecycle controls. The current changes
 > add Playwright/CDP Windows GUI and browser tests. Run `39934826380` passed
 > settings, queueing, Pause, restart/Resume/completion and Cancel, then Edge's
-> TCP debugging endpoint failed before Native Messaging. Browser startup now
-> uses Playwright's managed context for rerun. This is not a
+> TCP debugging endpoint failed before Native Messaging. The latest run
+> passed these UI actions but read persisted settings before their async load
+> completed; the test now waits for values. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

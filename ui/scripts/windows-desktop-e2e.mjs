@@ -213,11 +213,26 @@ async function removeWithRetry(target) {
   }
 }
 
+function stopEdgeProfileProcesses(profile) {
+  try {
+    execFileSync('powershell.exe', [
+      '-NoProfile', '-Command',
+      '$profile = $env:ZEX_E2E_EDGE_PROFILE; Get-CimInstance Win32_Process | Where-Object { $_.Name -in @("msedge.exe", "msedgewebview2.exe") -and $_.CommandLine -like ("*" + $profile + "*") } | ForEach-Object { & taskkill.exe /PID $_.ProcessId /T /F | Out-Null }',
+    ], {
+      encoding: 'utf8',
+      stdio: 'ignore',
+      env: { ...process.env, ZEX_E2E_EDGE_PROFILE: profile },
+      timeout: 15_000,
+    })
+  } catch { /* the profile may already be fully closed */ }
+}
+
 let appProcess
 let desktopBrowser
 let edgeContext
 let extensionId
 let extensionDownload
+const edgeProfile = path.join(temporaryRoot, 'edge-profile')
 try {
   let appPort = await availablePort()
   appProcess = startApp(appPort)
@@ -326,8 +341,7 @@ try {
   await page.getByRole('button', { name: 'Register Native Messaging host' }).click()
   await page.getByRole('status').filter({ hasText: 'Registered Native Messaging' }).waitFor({ state: 'visible' })
 
-  const profile = path.join(temporaryRoot, 'edge-profile')
-  edgeContext = await chromium.launchPersistentContext(profile, {
+  edgeContext = await chromium.launchPersistentContext(edgeProfile, {
     executablePath: edgePath,
     headless: false,
     ignoreDefaultArgs: ['--disable-extensions'],
@@ -370,7 +384,13 @@ try {
   await page.getByText('No downloads to show.').waitFor({ state: 'visible' })
   console.log('PASS finished download history can be cleared from the desktop UI')
 } finally {
-  if (edgeContext) await edgeContext.close().catch(() => {})
+  if (edgeContext) {
+    await Promise.race([
+      edgeContext.close().catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 10_000)),
+    ])
+  }
+  stopEdgeProfileProcesses(edgeProfile)
   await new Promise((resolve) => setTimeout(resolve, 500))
   if (desktopBrowser && appProcess) {
     const pages = desktopBrowser.contexts().flatMap((context) => context.pages())

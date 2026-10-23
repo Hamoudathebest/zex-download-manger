@@ -190,8 +190,7 @@ async function closeApp(page, browser, process) {
 
 let appProcess
 let desktopBrowser
-let edgeProcess
-let edgeBrowser
+let edgeContext
 let extensionId
 let extensionDownload
 try {
@@ -302,16 +301,17 @@ try {
   await page.getByRole('button', { name: 'Register Native Messaging host' }).click()
   await page.getByRole('status').filter({ hasText: 'Registered Native Messaging' }).waitFor({ state: 'visible' })
 
-  const edgePort = await availablePort()
   const profile = path.join(temporaryRoot, 'edge-profile')
-  edgeProcess = spawn(edgePath, [
-    '--no-first-run', '--no-default-browser-check', '--disable-default-apps',
-    `--user-data-dir=${profile}`, `--disable-extensions-except=${extensionDirectory}`,
-    `--load-extension=${extensionDirectory}`, `--remote-debugging-address=127.0.0.1`,
-    `--remote-debugging-port=${edgePort}`, 'about:blank',
-  ], { stdio: 'ignore' })
-  edgeBrowser = await connectBrowser(edgePort, edgeProcess)
-  const extensionPage = await edgeBrowser.newPage()
+  edgeContext = await chromium.launchPersistentContext(profile, {
+    executablePath: edgePath,
+    headless: false,
+    ignoreDefaultArgs: ['--disable-extensions'],
+    args: [
+      '--no-first-run', '--no-default-browser-check', '--disable-default-apps',
+      `--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`,
+    ],
+  })
+  const extensionPage = await edgeContext.newPage()
   extensionPage.setDefaultTimeout(timeout)
   await extensionPage.goto(`chrome-extension://${extensionId}/popup.html`)
   await extensionPage.getByRole('button', { name: 'Check connection' }).click()
@@ -345,10 +345,7 @@ try {
   await page.getByText('No downloads to show.').waitFor({ state: 'visible' })
   console.log('PASS finished download history can be cleared from the desktop UI')
 } finally {
-  if (edgeBrowser) await edgeBrowser.close().catch(() => {})
-  if (edgeProcess?.exitCode === null) {
-    try { execFileSync('taskkill.exe', ['/PID', String(edgeProcess.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* Edge exited during cleanup */ }
-  }
+  if (edgeContext) await edgeContext.close().catch(() => {})
   if (desktopBrowser && appProcess) {
     const pages = desktopBrowser.contexts().flatMap((context) => context.pages())
     const page = pages[0]

@@ -34,9 +34,10 @@ The output is `installer/download-manager-setup.exe`.
 The application NSIS bundle is configured in `ui/src-tauri/tauri.conf.json`.
 Windows run `39866677122` built it, silently installed it, and verified the
 desktop process remained running during the startup smoke test. New desktop
-and Native Messaging E2E run `39933039276` exercised settings, queue insertion
-and Pause but stopped on a missing fixture route; the route is fixed for
-rerun. Manual Windows 10/11 testing remains outstanding.
+and Native Messaging E2E run `39934826380` exercised desktop settings, queueing,
+Pause, restart/Resume, completion and Cancel. Edge startup failed before
+Native Messaging; a Playwright-managed Edge rerun is pending. Manual Windows
+10/11 testing remains outstanding.
 
 ## Signing
 

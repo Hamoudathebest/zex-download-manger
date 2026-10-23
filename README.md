@@ -8,9 +8,10 @@ from scratch, in the open, with no proprietary code.
 > Internet Download Manager (IDM). GitHub Actions built the Windows CLI
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
 > `windows-latest`, including engine lifecycle controls. The current changes
-> add Playwright/CDP Windows GUI and browser tests. The latest run passed
-> settings, queue insertion and Pause, then stopped because the loopback test
-> server lacked a queued-file route; that fixture is fixed for rerun. This is not a
+> add Playwright/CDP Windows GUI and browser tests. Run `39934826380` passed
+> settings, queueing, Pause, restart/Resume/completion and Cancel, then Edge's
+> TCP debugging endpoint failed before Native Messaging. Browser startup now
+> uses Playwright's managed context for rerun. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

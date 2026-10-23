@@ -783,10 +783,10 @@ async fn run(args: Args) -> Result<i32, String> {
 
     if shared.cancelled.load(Ordering::SeqCst) {
         shared.save(true).await;
-        let _ = tokio::fs::remove_file(&part_path).await;
-        let _ = tokio::fs::remove_file(&ckpt_path).await;
+        remove_file_if_exists(&part_path).await?;
+        remove_file_if_exists(&ckpt_path).await?;
         if let Some(control_file) = &args.control_file {
-            let _ = tokio::fs::remove_file(control_file).await;
+            remove_file_if_exists(control_file).await?;
         }
         eprintln!("CANCELLED: removed partial download and checkpoint");
         return Ok(131);
@@ -801,6 +801,9 @@ async fn run(args: Args) -> Result<i32, String> {
             ckpt_path.display()
         );
         eprintln!("resume with: dm {} {} --resume", args.url, dest.display());
+        if let Some(control_file) = &args.control_file {
+            remove_file_if_exists(control_file).await?;
+        }
         return Ok(130);
     }
     if let Some(e) = first_error {
@@ -857,7 +860,7 @@ async fn run(args: Args) -> Result<i32, String> {
         .map_err(|e| format!("atomic rename failed: {}", e))?;
     let _ = tokio::fs::remove_file(&ckpt_path).await;
     if let Some(control_file) = &args.control_file {
-        let _ = tokio::fs::remove_file(control_file).await;
+        remove_file_if_exists(control_file).await?;
     }
     println!(
         "done: {} ({} bytes in {:.2}s, avg {:.1} KiB/s, sha256 {})",
@@ -868,6 +871,14 @@ async fn run(args: Args) -> Result<i32, String> {
         actual
     );
     Ok(0)
+}
+
+async fn remove_file_if_exists(path: &Path) -> Result<(), String> {
+    match tokio::fs::remove_file(path).await {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not remove {}: {}", path.display(), error)),
+    }
 }
 
 #[tokio::main]

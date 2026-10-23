@@ -7,8 +7,9 @@ from scratch, in the open, with no proprietary code.
 > not a finished product or a claim of parity with
 > Internet Download Manager (IDM). GitHub Actions built the Windows CLI
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
-> `windows-latest`, including the newest engine lifecycle controls. CI does
-> not exercise the GUI actions interactively. This is not a
+> `windows-latest`, including engine lifecycle controls. The current changes
+> add Playwright/CDP Windows GUI and browser tests; their first run is
+> pending. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,
@@ -43,18 +44,17 @@ from scratch, in the open, with no proprietary code.
   flagged and skipped, never decrypted. yt-dlp is evaluation-only
   and is not bundled.
 - **Desktop UI (in progress)** — React + TypeScript + Tailwind in a
-  Tauri 2 shell with ten navigation views. The shell starts real CLI
-  downloads, shows observed progress, persists job records and resumes
-  interrupted jobs with a valid checkpoint; Pause and Cancel use engine
-  control files but await Windows CI verification. Queue/scheduler actions
-  and completed-history management remain incomplete.
+  Tauri 2 shell with ten navigation views. It starts/resumes real CLI
+  downloads, displays engine progress/speed/ETA, persists settings/history,
+  dispatches queued jobs up to configured concurrency, and supports
+  Pause/Cancel. Windows end-to-end GUI automation is in progress; scheduler,
+  queue priority/reordering and manual Windows verification remain open.
 - **Browser companion** — a Rust Native Messaging host validates chosen
   URLs, starts the real engine and writes shared job state. The Tauri
   app can register Chromium extension IDs. Live browser handshake and
   Firefox pairing remain unverified/incomplete.
-- **Persistence** — download checkpoints and desktop history currently
-  use JSON files. SQLite migration and queue/scheduler management remain
-  open work.
+- **Persistence** — download checkpoints, settings and desktop history use
+  JSON files. SQLite migration and scheduler management remain open.
 
 ## Repository layout
 

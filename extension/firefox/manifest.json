@@ -22,6 +22,7 @@
     "activeTab",
     "contextMenus",
     "downloads",
+    "nativeMessaging",
     "scripting",
     "storage"
   ],

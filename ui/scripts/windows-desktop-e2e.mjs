@@ -1,0 +1,336 @@
+import { createHash, generateKeyPairSync } from 'node:crypto'
+import { spawn, execFileSync } from 'node:child_process'
+import { createServer } from 'node:http'
+import { once } from 'node:events'
+import { mkdtemp, mkdir, readFile, rm, writeFile, cp } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { chromium } from 'playwright-core'
+
+const [appPath, edgePath, repositoryRoot] = process.argv.slice(2)
+if (!appPath || !edgePath || !repositoryRoot) {
+  throw new Error('Usage: node windows-desktop-e2e.mjs <installed-app.exe> <msedge.exe> <repository-root>')
+}
+
+const timeout = 90_000
+const fixtureBytes = 12 * 1024 * 1024
+const fixture = Buffer.alloc(fixtureBytes)
+for (let index = 0; index < fixture.length; index += 1) fixture[index] = (index * 31 + 7) & 0xff
+const fixtureHash = createHash('sha256').update(fixture).digest('hex')
+const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'zex-desktop-e2e-'))
+const downloadDirectory = path.join(temporaryRoot, 'downloads')
+await mkdir(downloadDirectory)
+
+const server = createServer((request, response) => {
+  if (!['GET', 'HEAD'].includes(request.method ?? '') || !/^\/(paused|cancelled|extension)\.bin$/.test(request.url ?? '')) {
+    response.writeHead(404).end()
+    return
+  }
+  const range = request.headers.range?.match(/^bytes=(\d+)-(\d*)$/)
+  const start = range ? Number(range[1]) : 0
+  const end = range && range[2] ? Math.min(Number(range[2]), fixtureBytes - 1) : fixtureBytes - 1
+  response.writeHead(range ? 206 : 200, {
+    'Accept-Ranges': 'bytes',
+    'Content-Length': end - start + 1,
+    'Content-Type': 'application/octet-stream',
+    ETag: '"zex-e2e-fixture-v1"',
+    ...(range ? { 'Content-Range': `bytes ${start}-${end}/${fixtureBytes}` } : {}),
+  })
+  if (request.method === 'HEAD') {
+    response.end()
+    return
+  }
+  let offset = start
+  const timer = setInterval(() => {
+    if (response.destroyed) {
+      clearInterval(timer)
+      return
+    }
+    const next = Math.min(end + 1, offset + 32 * 1024)
+    response.write(fixture.subarray(offset, next))
+    offset = next
+    if (offset > end) {
+      clearInterval(timer)
+      response.end()
+    }
+  }, 100)
+  response.on('close', () => clearInterval(timer))
+})
+server.listen(0, '127.0.0.1')
+await once(server, 'listening')
+const serverPort = server.address().port
+const fixtureUrl = (name) => `http://127.0.0.1:${serverPort}/${name}.bin`
+
+async function availablePort() {
+  const probe = createServer()
+  probe.listen(0, '127.0.0.1')
+  await once(probe, 'listening')
+  const port = probe.address().port
+  await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()))
+  return port
+}
+
+async function waitForCdp(port) {
+  const url = `http://127.0.0.1:${port}/json/version`
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) return
+    } catch { /* WebView/Edge is still starting */ }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error(`CDP endpoint did not start: ${url}`)
+}
+
+async function connectBrowser(port) {
+  await waitForCdp(port)
+  return chromium.connectOverCDP(`http://127.0.0.1:${port}`)
+}
+
+function startApp(port) {
+  const args = `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`
+  return spawn(appPath, [], {
+    env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: args },
+    stdio: 'ignore',
+  })
+}
+
+async function appPage(browser) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    for (const context of browser.contexts()) {
+      for (const page of context.pages()) {
+        if (await page.title().catch(() => '') === 'ZEX Download Manager') {
+          page.setDefaultTimeout(timeout)
+          return page
+        }
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error('Tauri WebView did not expose the desktop application page over CDP.')
+}
+
+async function rowByName(page, name) {
+  const row = page.getByRole('row').filter({ hasText: name }).first()
+  await row.waitFor({ state: 'visible', timeout })
+  return row
+}
+
+async function waitStatus(page, name, expected) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    const row = page.getByRole('row').filter({ hasText: name }).first()
+    if (await row.count()) {
+      const status = (await row.locator('td').nth(1).innerText()).trim().toLowerCase()
+      if (status === expected) return row
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error(`Timed out waiting for ${name} to reach ${expected}.`)
+}
+
+async function waitForProgress(row) {
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    const value = Number(await row.getByRole('progressbar').getAttribute('aria-valuenow').catch(() => '0'))
+    if (value > 0) return
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  throw new Error('Download did not report nonzero progress.')
+}
+
+async function closeApp(page, browser, process) {
+  await page.keyboard.press('Alt+F4').catch(() => {})
+  const deadline = Date.now() + 12_000
+  while (Date.now() < deadline && process.exitCode === null) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  await browser.close().catch(() => {})
+  if (process.exitCode === null) {
+    try { execFileSync('taskkill.exe', ['/PID', String(process.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* process exited during cleanup */ }
+  }
+}
+
+let appProcess
+let desktopBrowser
+let edgeProcess
+let edgeBrowser
+let extensionId
+let extensionDownload
+try {
+  let appPort = await availablePort()
+  appProcess = startApp(appPort)
+  desktopBrowser = await connectBrowser(appPort)
+  let page = await appPage(desktopBrowser)
+
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await page.getByLabel('Download folder').fill(downloadDirectory)
+  await page.getByLabel('Connections per download (1–32)').fill('2')
+  await page.getByLabel('Maximum simultaneous desktop downloads (1–16)').fill('1')
+  await page.getByLabel('Speed limit (KiB/s; 0 = unlimited)').fill('512')
+  await page.getByLabel('Retries per segment (1–20)').fill('2')
+  await page.getByRole('button', { name: 'Save settings' }).click()
+  await page.getByRole('status').filter({ hasText: 'Settings saved.' }).waitFor({ state: 'visible' })
+  console.log('PASS settings persisted through desktop form')
+
+  await page.getByLabel('Download URL').fill(fixtureUrl('paused'))
+  await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  let row = await rowByName(page, 'paused.bin')
+  await row.getByRole('button', { name: 'Pause' }).waitFor({ state: 'visible', timeout })
+  await waitForProgress(row)
+  const speedText = (await row.locator('td').nth(4).innerText()).trim()
+  if (speedText === '—') throw new Error('Engine speed sample was not displayed.')
+  const speedMatch = speedText.match(/^([\d.]+)\s*(B|KB|MB|GB)\/s$/)
+  if (!speedMatch) throw new Error(`Unrecognized speed display: ${speedText}`)
+  const scale = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[speedMatch[2]]
+  if (Number(speedMatch[1]) * scale > 850 * 1024) throw new Error(`Configured speed limit was not applied: ${speedText}`)
+  if ((await row.locator('td').nth(5).innerText()).trim() === '—') throw new Error('Engine ETA sample was not displayed.')
+
+  await page.getByLabel('Download URL').fill(fixtureUrl('queued'))
+  await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByRole('link', { name: 'Download Queue' }).click()
+  await waitStatus(page, 'queued.bin', 'queued')
+  console.log('PASS configured one-slot download queue retains waiting work')
+
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  await row.getByRole('button', { name: 'Pause' }).click()
+  row = await waitStatus(page, 'paused.bin', 'paused')
+  await row.getByRole('button', { name: 'Resume' }).waitFor({ state: 'visible', timeout })
+  console.log('PASS Add Download and Pause created a resumable checkpoint')
+  await waitStatus(page, 'queued.bin', 'active')
+  await page.getByRole('link', { name: 'Completed Downloads' }).click()
+  await waitStatus(page, 'queued.bin', 'completed')
+
+  await closeApp(page, desktopBrowser, appProcess)
+  desktopBrowser = undefined
+  appPort = await availablePort()
+  appProcess = startApp(appPort)
+  desktopBrowser = await connectBrowser(appPort)
+  page = await appPage(desktopBrowser)
+  await page.getByRole('link', { name: 'Settings' }).click()
+  if (await page.getByLabel('Download folder').inputValue() !== downloadDirectory) throw new Error('Download folder setting did not persist across restart.')
+  if (await page.getByLabel('Connections per download (1–32)').inputValue() !== '2') throw new Error('Connection setting did not persist across restart.')
+  if (await page.getByLabel('Speed limit (KiB/s; 0 = unlimited)').inputValue() !== '512') throw new Error('Speed limit setting did not persist across restart.')
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  row = await rowByName(page, 'paused.bin')
+  if (!(await row.getByRole('button', { name: 'Resume' }).isVisible())) {
+    throw new Error('Paused download was not resumable after restarting the desktop application.')
+  }
+  await row.getByRole('button', { name: 'Resume' }).click()
+  await page.getByRole('link', { name: 'Completed Downloads' }).click()
+  row = await waitStatus(page, 'paused.bin', 'completed')
+  const resumedData = await readFile(path.join(downloadDirectory, 'paused.bin'))
+  if (resumedData.length !== fixtureBytes || createHash('sha256').update(resumedData).digest('hex') !== fixtureHash) {
+    throw new Error('Resumed download bytes did not match the loopback fixture.')
+  }
+  await row.getByRole('progressbar', { name: 'Progress for paused.bin' }).waitFor({ state: 'visible' })
+  console.log('PASS Resume after application restart completed the download')
+
+  await page.getByLabel('Download URL').fill(fixtureUrl('cancelled'))
+  await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  row = await rowByName(page, 'cancelled.bin')
+  await row.getByRole('button', { name: 'Cancel' }).click()
+  await page.getByRole('link', { name: 'Download History' }).click()
+  row = await waitStatus(page, 'cancelled.bin', 'cancelled')
+  if (await row.getByRole('button', { name: 'Resume' }).count()) throw new Error('Cancelled job unexpectedly exposes Resume.')
+  for (const suffix of ['.part', '.checkpoint.json']) {
+    try {
+      await readFile(path.join(downloadDirectory, `cancelled.bin${suffix}`))
+      throw new Error(`Cancelled download left ${suffix} behind.`)
+    } catch (reason) {
+      if (reason instanceof Error && reason.message.includes('left ')) throw reason
+      if (reason?.code !== 'ENOENT') throw reason
+    }
+  }
+  console.log('PASS Cancel removed active partial state and retained history')
+
+  const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+  const extensionDirectory = path.join(temporaryRoot, 'extension')
+  await cp(path.join(repositoryRoot, 'extension'), extensionDirectory, { recursive: true })
+  const manifestPath = path.join(extensionDirectory, 'manifest.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const publicDer = publicKey.export({ type: 'spki', format: 'der' })
+  manifest.key = publicDer.toString('base64')
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  const keyHash = createHash('sha256').update(publicDer).digest()
+  extensionId = [...keyHash.subarray(0, 16)]
+    .flatMap((byte) => [byte >> 4, byte & 15])
+    .map((digit) => String.fromCharCode(97 + digit))
+    .join('')
+
+  await page.getByRole('link', { name: 'Browser Integration' }).click()
+  await page.getByLabel('Chromium extension ID(s)').fill(extensionId)
+  await page.getByRole('button', { name: 'Register Native Messaging host' }).click()
+  await page.getByRole('status').filter({ hasText: 'Registered Native Messaging' }).waitFor({ state: 'visible' })
+
+  const edgePort = await availablePort()
+  const profile = path.join(temporaryRoot, 'edge-profile')
+  edgeProcess = spawn(edgePath, [
+    '--no-first-run', '--no-default-browser-check', '--disable-default-apps',
+    `--user-data-dir=${profile}`, `--disable-extensions-except=${extensionDirectory}`,
+    `--load-extension=${extensionDirectory}`, `--remote-debugging-address=127.0.0.1`,
+    `--remote-debugging-port=${edgePort}`, 'about:blank',
+  ], { stdio: 'ignore' })
+  edgeBrowser = await connectBrowser(edgePort)
+  const extensionPage = await edgeBrowser.newPage()
+  extensionPage.setDefaultTimeout(timeout)
+  await extensionPage.goto(`chrome-extension://${extensionId}/popup.html`)
+  await extensionPage.getByRole('button', { name: 'Check connection' }).click()
+  await extensionPage.getByText('Connected', { exact: true }).waitFor({ state: 'visible', timeout })
+  console.log('PASS Windows Chromium extension completed a live Native Messaging ping')
+
+  extensionDownload = path.join(downloadDirectory, 'extension.bin')
+  await extensionPage.getByLabel('Send a chosen URL directly to the desktop app').fill(fixtureUrl('extension'))
+  await extensionPage.getByRole('button', { name: 'Send chosen URL to app' }).click()
+  await extensionPage.getByText('Sent to the desktop app.', { exact: true }).waitFor({ state: 'visible', timeout })
+  await page.getByRole('link', { name: 'Active Downloads' }).click()
+  row = await waitStatus(page, 'extension.bin', 'active')
+  await waitForProgress(row)
+  if ((await row.locator('td').nth(4).innerText()).trim() === '—') {
+    throw new Error('Native Messaging download did not expose checkpoint-derived speed.')
+  }
+  if ((await row.locator('td').nth(5).innerText()).trim() === '—') {
+    throw new Error('Native Messaging download did not expose checkpoint-derived ETA.')
+  }
+  console.log('PASS desktop UI polls Native Messaging engine checkpoint progress/speed/ETA')
+  await page.getByRole('link', { name: 'Download History' }).click()
+  row = await waitStatus(page, 'extension.bin', 'completed')
+  const downloaded = await readFile(extensionDownload)
+  if (downloaded.length !== fixtureBytes || createHash('sha256').update(downloaded).digest('hex') !== fixtureHash) {
+    throw new Error('Native Messaging download bytes did not match the loopback fixture.')
+  }
+  console.log('PASS extension Native Messaging request downloaded exact bytes and reached desktop history')
+
+  await page.getByRole('link', { name: 'Download History' }).click()
+  await page.getByRole('button', { name: 'Clear non-resumable history' }).click()
+  await page.getByText('No downloads to show.').waitFor({ state: 'visible' })
+  console.log('PASS finished download history can be cleared from the desktop UI')
+} finally {
+  if (edgeBrowser) await edgeBrowser.close().catch(() => {})
+  if (edgeProcess?.exitCode === null) {
+    try { execFileSync('taskkill.exe', ['/PID', String(edgeProcess.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* Edge exited during cleanup */ }
+  }
+  if (desktopBrowser && appProcess) {
+    const pages = desktopBrowser.contexts().flatMap((context) => context.pages())
+    const page = pages[0]
+    if (page) await closeApp(page, desktopBrowser, appProcess).catch(() => {})
+  } else if (appProcess?.exitCode === null) {
+    try { execFileSync('taskkill.exe', ['/PID', String(appProcess.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* app exited during cleanup */ }
+  }
+  if (extensionId) {
+    for (const key of [
+      'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.downloadmanager.nextgen',
+      'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts\\com.downloadmanager.nextgen',
+      'HKCU\\Software\\BraveSoftware\\Brave\\NativeMessagingHosts\\com.downloadmanager.nextgen',
+    ]) {
+      try { execFileSync('reg.exe', ['delete', key, '/f'], { stdio: 'ignore' }) } catch { /* no key to clean */ }
+    }
+  }
+  if (extensionDownload) await rm(extensionDownload, { force: true }).catch(() => {})
+  await new Promise((resolve) => server.close(() => resolve()))
+  await rm(temporaryRoot, { recursive: true, force: true })
+}

@@ -693,12 +693,13 @@ A media job is a normal download job (§9) plus:
 ## 7. Desktop UI (Tauri 2 + React / TypeScript / Tailwind — partial implementation)
 
 > **Current status:** `ui/src-tauri/` provides a Tauri 2 shell and backend
-> commands to start/resume/pause/cancel the Rust CLI, list persisted jobs, and register the
-> Chromium Native Messaging host. The frontend starts downloads and polls
-> observed progress. Linux compile/tests pass. Windows CI builds and
-> smoke-launches the app and tests engine control-file pause/resume/cancel;
-> installed UI actions, registry flow and live browser handoff still need
-> interactive verification. Queue/scheduler remain unimplemented. This
+> commands to start/resume/pause/cancel the Rust CLI, list persisted jobs,
+> load/save settings, clear finished history, and register the Chromium
+> Native Messaging host. The frontend displays progress/speed/ETA and uses
+> a persisted concurrency queue. Linux compile/tests pass. New Windows UI
+> and browser E2E automation is pending its first CI run; manual user-machine
+> verification remains open. Priority/reordering and scheduler remain
+> unimplemented. This
 > section's remaining design points are future work, not shipped behavior.
 
 ### 7.1 Why Tauri 2 (rationale, and what would change the choice)
@@ -739,11 +740,12 @@ A media job is a normal download job (§9) plus:
 ### 7.3 Tauri command surface (partial)
 
 Implemented commands are `start_download`, `resume_download`,
-`pause_download`, `cancel_download`, `list_downloads`, and
-`pair_chromium_extensions`. They invoke the packaged Rust CLI, use
-checkpoint/control files for lifecycle actions, and persist job state.
-Queue/scheduler operations and event subscriptions from the full §3.6
-contract remain unimplemented.
+`pause_download`, `cancel_download`, `list_downloads`, `get_settings`,
+`save_settings`, `clear_history`, and `pair_chromium_extensions`. They invoke
+the packaged Rust CLI, use checkpoint/control files for lifecycle actions,
+apply persisted folder/connections/retry/throttle/concurrency settings, and
+persist job state. Priority/reordering, scheduler operations and event
+subscriptions from the full §3.6 contract remain unimplemented.
 
 ### 7.4 UI ↔ engine sync and offline behaviour
 

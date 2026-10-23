@@ -1,9 +1,10 @@
 # Release engineering — DevOps & release plan (Agent 10, Phase 1)
 
-> **Current status (2026-10-22):** Windows run `39850739198` passed Rust,
+> **Current status (2026-10-23):** Windows run `39866677122` passed Rust,
 > engine integration, Native Messaging, Tauri build, NSIS install/start,
-> media and extension syntax checks on `windows-latest`. Interactive
-> browser and Windows 10/11 user-machine testing remain open. This document
+> media and extension syntax checks on `windows-latest`. This branch adds
+> desktop/browser E2E and security-audit jobs; their first run is pending.
+> Manual Windows 10/11 user-machine testing remains open. This document
 > remains the original release plan; root
 > `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.
 >

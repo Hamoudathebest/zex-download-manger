@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   cancelDesktopDownload,
+  clearDesktopHistory,
   isDesktopRuntime,
   loadEngineState,
   pauseDesktopDownload,
@@ -126,6 +127,15 @@ export default function App() {
     }
   }
 
+  async function clearHistory() {
+    try {
+      await clearDesktopHistory()
+      setData(await loadEngineState())
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   // "/" focuses search; Escape clears it. Navigation focus moves to main on route change.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -151,6 +161,7 @@ export default function App() {
     onResumeDownload: isDesktopRuntime() && !preview ? resumeDownload : undefined,
     onPauseDownload: isDesktopRuntime() && !preview ? pauseDownload : undefined,
     onCancelDownload: isDesktopRuntime() && !preview ? cancelDownload : undefined,
+    onClearHistory: isDesktopRuntime() && !preview ? clearHistory : undefined,
   }
 
   return (

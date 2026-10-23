@@ -22,9 +22,9 @@
 
 - **[../.github/workflows/windows-build.yml](../.github/workflows/windows-build.yml)**
   — Windows x64 Rust build/tests, Native Messaging tests, Tauri/NSIS
-  build and install/start smoke test. Run `39850739198` passed these
-  checks on `windows-latest`; interactive browser and user-machine
-  Windows 10/11 verification remain outstanding.
+  build and desktop/browser E2E smoke tests. Previous run `39866677122`
+  passed its earlier checks on `windows-latest`; the new E2E/security jobs
+  are pending their first run.
 
 ## Other areas
 

@@ -17,6 +17,15 @@ const HOST_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 const MAX_URL_BYTES: usize = 64 * 1024;
 
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SharedSettings {
+    download_directory: Option<PathBuf>,
+    connections: Option<u8>,
+    throttle_bytes_per_sec: Option<u64>,
+    max_retries: Option<u32>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeDownloadRecord {
@@ -30,6 +39,8 @@ struct NativeDownloadRecord {
     category: String,
     added_at: String,
     progress_percent: Option<f64>,
+    #[serde(default)]
+    eta_seconds: Option<u64>,
     destination: String,
     error: Option<String>,
     #[serde(default)]
@@ -169,7 +180,29 @@ fn safe_filename(input: Option<&str>) -> String {
     result
 }
 
-fn downloads_directory() -> Result<PathBuf, String> {
+fn load_shared_settings_at(path: &Path) -> SharedSettings {
+    fs::read(path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default()
+}
+
+fn shared_settings() -> SharedSettings {
+    app_data_directory()
+        .map(|directory| load_shared_settings_at(&directory.join("settings.json")))
+        .unwrap_or_default()
+}
+
+fn downloads_directory(settings: &SharedSettings) -> Result<PathBuf, String> {
+    if let Some(directory) = settings
+        .download_directory
+        .as_ref()
+        .filter(|path| path.is_absolute())
+    {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("cannot create download directory: {error}"))?;
+        return Ok(directory.clone());
+    }
     let home = env::var_os("USERPROFILE")
         .or_else(|| env::var_os("HOME"))
         .ok_or_else(|| "cannot determine the user's home directory".to_string())?;
@@ -260,18 +293,40 @@ fn start_download(message: &Value) -> Result<(String, String), String> {
     }
 
     let filename = safe_filename(message.get("filename").and_then(Value::as_str));
-    let directory = downloads_directory()?;
+    let settings = shared_settings();
+    let directory = downloads_directory(&settings)?;
     let destination = available_destination(&directory, &filename)?;
     let engine = engine_path()?;
     if !engine.is_file() {
         return Err("download engine is missing next to the native host".to_string());
     }
 
-    let mut child = Command::new(engine)
+    let connections = settings
+        .connections
+        .filter(|value| (1..=32).contains(value))
+        .unwrap_or(4);
+    let retries = settings
+        .max_retries
+        .filter(|value| (1..=20).contains(value))
+        .unwrap_or(5);
+    let throttle = settings
+        .throttle_bytes_per_sec
+        .filter(|value| *value <= 10_000_000_000)
+        .unwrap_or(0);
+    let mut command = Command::new(engine);
+    command
         .arg(url)
         .arg(&destination)
+        .arg("--connections")
+        .arg(connections.to_string())
+        .arg("--max-retries")
+        .arg(retries.to_string())
         .arg("--control-file")
-        .arg(format!("{}.control", destination.to_string_lossy()))
+        .arg(format!("{}.control", destination.to_string_lossy()));
+    if throttle > 0 {
+        command.arg("--throttle").arg(throttle.to_string());
+    }
+    let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -309,6 +364,7 @@ fn start_download(message: &Value) -> Result<(String, String), String> {
         category: category.to_string(),
         added_at,
         progress_percent: None,
+        eta_seconds: None,
         destination: destination.to_string_lossy().into_owned(),
         error: None,
         resumable: false,
@@ -349,7 +405,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        handle_request, persist_record_in, read_frame, safe_filename, NativeDownloadRecord,
+        downloads_directory, handle_request, load_shared_settings_at, persist_record_in,
+        read_frame, safe_filename, NativeDownloadRecord,
     };
     use serde_json::json;
     use std::io::Cursor;
@@ -409,6 +466,7 @@ mod tests {
             category: "file".to_string(),
             added_at: "123456789".to_string(),
             progress_percent: None,
+            eta_seconds: None,
             destination: directory.join("fixture.bin").to_string_lossy().into_owned(),
             error: None,
             resumable: false,
@@ -420,6 +478,35 @@ mod tests {
         assert_eq!(state[0]["id"], "native-test");
         assert_eq!(state[0]["status"], "active");
         assert_eq!(state[0]["downloadedBytes"], 0);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn native_host_uses_persisted_desktop_folder_and_engine_limits() {
+        let directory =
+            std::env::temp_dir().join(format!("zex-native-settings-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let destination = directory.join("chosen-download-folder");
+        let settings_path = directory.join("settings.json");
+        std::fs::write(
+            &settings_path,
+            serde_json::to_vec(&json!({
+                "downloadDirectory": destination,
+                "connections": 2,
+                "maxConcurrentDownloads": 1,
+                "throttleBytesPerSec": 65536,
+                "maxRetries": 3
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let settings = load_shared_settings_at(&settings_path);
+        assert_eq!(downloads_directory(&settings).unwrap(), destination);
+        assert_eq!(settings.connections, Some(2));
+        assert_eq!(settings.throttle_bytes_per_sec, Some(65536));
+        assert_eq!(settings.max_retries, Some(3));
         std::fs::remove_dir_all(directory).unwrap();
     }
 }

@@ -310,7 +310,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 130, stderr)
         self.assertTrue(os.path.isfile(dest + ".part"))
         self.assertTrue(os.path.isfile(dest + ".checkpoint.json"))
-        os.remove(control)
+        self.assertFalse(os.path.exists(control))
 
         resumed = self._run([self.file_url, dest, "--resume", "--control-file", control,
                              "--sha256", self.expected_sha])

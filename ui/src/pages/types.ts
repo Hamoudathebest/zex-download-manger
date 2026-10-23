@@ -9,6 +9,7 @@ export interface PageProps {
   onResumeDownload?: (id: string) => Promise<void>
   onPauseDownload?: (id: string) => Promise<void>
   onCancelDownload?: (id: string) => Promise<void>
+  onClearHistory?: () => Promise<void>
 }
 
 export const filterBy = (items: DownloadItem[], pred: (d: DownloadItem) => boolean) =>

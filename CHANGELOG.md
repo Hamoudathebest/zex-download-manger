@@ -6,21 +6,31 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 
 ## [Unreleased]
 
-- Added desktop Resume, Pause and Cancel actions backed by checkpoint/control
-  files. Linux tests and Windows CI run `39865207656` pass; interactive GUI
-  actions still need a Windows user-machine check.
+- Added engine-reported download speed and ETA, persisted download-folder,
+  connections, retries and throttle settings, configurable concurrent queue
+  dispatch, restart checkpoint pausing, and clearable finished history.
+- Added an explicit URL-entry action to the Chromium popup so users can send a
+  chosen http(s) URL to the Native Messaging host without opting in to a site.
+- Added Playwright/CDP Windows automation for Add, Pause, restart/Resume,
+  completion hash, Cancel cleanup, queue/settings/history and real Chromium
+  Native Messaging. Its first Windows run is pending; no manual GUI test is
+  claimed.
+- Updated Tokio to 1.54.1 to address RustSec RUSTSEC-2026-0384. Added npm and
+  RustSec dependency audit checks to CI; the Tauri Linux GTK dependency tree
+  still reports existing glib/proc-macro-error advisories.
 - Open-source pack: MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
   `THIRD_PARTY_NOTICES.md`, and this changelog.
 - Published audit branch `engineering/audit-windows-ci` and pull
   request #1 to `main`; access and commit publication are verified.
-- Windows CI run `39865207656` passed engine/host tests, Tauri build,
+- Windows CI run `39866677122` passed engine/host tests, Tauri build,
   NSIS install/start smoke, media and extension checks, and uploaded the
   CLI, Native Messaging host and installer artifacts.
 - Published development pre-release [`v0.2.0`](https://github.com/Hamoudathebest/zex-download-manger/releases/tag/v0.2.0)
   after its tag workflow rebuilt, tested and checksummed the Windows assets.
 - Tauri 2 desktop source starts the real Rust CLI, persists local download
-  records, displays observed progress, and provides per-user Chromium
-  Native Messaging registration. Interactive browser handoff remains unverified.
+  records/settings, displays measured progress/speed/ETA, and provides
+  per-user Chromium Native Messaging registration. Windows GUI/browser E2E
+  automation is awaiting the first run.
 - Native Messaging host protocol and shared download-state persistence
   are implemented and Linux-tested. Firefox pairing remains incomplete.
 - Added a loopback end-to-end Native Messaging test that verifies the host

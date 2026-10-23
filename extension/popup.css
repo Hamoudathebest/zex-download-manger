@@ -9,6 +9,7 @@ h2 { margin: 16px 0 8px; font-size: 14px; }
 .toggle-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
 .hint { color: #5f6368; font-size: 12px; line-height: 1.5; }
 button { width: 100%; margin: 4px 0; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; }
+input[type="url"] { width: 100%; margin: 4px 0; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; }
 button:hover:not(:disabled) { background: #f0f4f9; }
 button:disabled { opacity: 0.5; cursor: default; }
 button[hidden] { display: none; }

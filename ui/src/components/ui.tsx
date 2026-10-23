@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { formatBytes, formatSpeed, type DownloadItem } from '../data/downloads'
+import { formatBytes, formatDuration, formatSpeed, type DownloadItem } from '../data/downloads'
 import { PREVIEW_NOTICE } from '../data/preview'
 
 export function PageHeader({ title, description }: { title: string; description: string }) {
@@ -84,6 +84,7 @@ export function DownloadTable({
             <th scope="col" className="px-4 py-2">Size</th>
             <th scope="col" className="px-4 py-2">Progress</th>
             <th scope="col" className="px-4 py-2">Speed</th>
+            <th scope="col" className="px-4 py-2">ETA</th>
             {(onResumeDownload || onPauseDownload || onCancelDownload) && <th scope="col" className="px-4 py-2">Actions</th>}
           </tr>
         </thead>
@@ -119,6 +120,7 @@ export function DownloadTable({
                 )}
               </td>
               <td className="px-4 py-2">{formatSpeed(d.speedBytesPerSec)}</td>
+              <td className="px-4 py-2">{formatDuration(d.etaSeconds)}</td>
               {(onResumeDownload || onPauseDownload || onCancelDownload) && (
                 <td className="px-4 py-2">
                   {d.status === 'active' && onPauseDownload && (
@@ -137,7 +139,7 @@ export function DownloadTable({
                       Resume
                     </button>
                   )}
-                  {onCancelDownload && ['active', 'paused', 'interrupted', 'failed'].includes(d.status) && (
+                  {onCancelDownload && ['active', 'queued', 'paused', 'interrupted', 'failed'].includes(d.status) && (
                     <button
                       type="button"
                       onClick={() => void onCancelDownload(d.id)}

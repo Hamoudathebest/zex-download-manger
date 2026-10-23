@@ -1,9 +1,9 @@
 # Building — Linux prototype vs. Windows (GitHub Actions)
 
-> **Current status (2026-10-22):** Windows run `39850739198` passed the
-> Rust, engine integration, Native Messaging, Tauri build, NSIS install/start
-> smoke, media, and extension syntax checks. This proves the `windows-latest`
-> runner path only, not Windows 10/11 user-machine compatibility.
+> **Current status (2026-10-23):** Windows run `39866677122` passed the
+> earlier Rust, engine integration, Native Messaging, Tauri build, NSIS
+> install/start smoke, media, and extension syntax checks. This revision adds
+> desktop/browser E2E and security-audit jobs; their first Windows run is pending.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >
@@ -21,7 +21,7 @@
 | Windows `.exe` | **No** — not built here | Yes — CI artefact, **unsigned by default** |
 | Tauri NSIS installer (`.exe`) | **No** — Windows target only | Built, silently installed and startup-smoke-tested on `windows-latest` |
 | MSI | **No** — not implemented | Not implemented |
-| Native Messaging registry registration | **No** — Windows registry work, not testable here | UI registration command is implemented; CI/live browser verification pending |
+| Native Messaging registry registration | **No** — Windows registry work, not testable here | UI registration command is implemented; new Edge/host E2E is pending |
 | Code signing | **No** | **No** — all current artifacts are unsigned |
 
 ## 2. Linux prototype build (what works here)
@@ -62,7 +62,7 @@ artefact. Do not label prototype output as a release.
    install/start smoke test.
 3. **Artifact:** `dm-windows-x64-<commit>` contains CLI, Native Messaging
    host and NSIS desktop installer executables. All are unsigned.
-4. Workflow run `39850739198` passed the build and installer/startup
+4. Workflow run `39866677122` passed the build and installer/startup
    smoke. Treat it as runner validation only; a successful runner build
    does not prove interactive Windows 10/11 compatibility.
 

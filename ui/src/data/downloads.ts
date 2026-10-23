@@ -43,6 +43,7 @@ export interface DownloadItem {
   addedAt: string
   /** 0–100, ONLY when reported by the real engine. Null = unknown. */
   progressPercent: number | null
+  etaSeconds?: number | null
   resumable?: boolean
 }
 
@@ -58,6 +59,14 @@ export interface DownloadsData {
   /** Null when disconnected — callers must render the empty state. */
   engine: EngineState | null
   error: string | null
+}
+
+export interface DesktopSettings {
+  downloadDirectory: string
+  connections: number
+  maxConcurrentDownloads: number
+  throttleBytesPerSec: number
+  maxRetries: number
 }
 
 /** URL the real engine is expected to publish. Override with VITE_ENGINE_STATE_URL. */
@@ -133,6 +142,21 @@ export async function cancelDesktopDownload(id: string): Promise<void> {
   await invoke('cancel_download', { id })
 }
 
+export async function loadDesktopSettings(): Promise<DesktopSettings> {
+  if (!isDesktopRuntime()) throw new Error('Settings are available only in the ZEX desktop application.')
+  return invoke<DesktopSettings>('get_settings')
+}
+
+export async function saveDesktopSettings(settings: DesktopSettings): Promise<DesktopSettings> {
+  if (!isDesktopRuntime()) throw new Error('Settings are available only in the ZEX desktop application.')
+  return invoke<DesktopSettings>('save_settings', { settings })
+}
+
+export async function clearDesktopHistory(): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Download history is available only in the ZEX desktop application.')
+  await invoke('clear_history')
+}
+
 export function formatBytes(bytes: number | null): string {
   if (bytes === null || Number.isNaN(bytes)) return '—'
   if (bytes === 0) return '0 B'
@@ -144,4 +168,15 @@ export function formatBytes(bytes: number | null): string {
 export function formatSpeed(bytesPerSec: number | null): string {
   if (bytesPerSec === null) return '—'
   return `${formatBytes(bytesPerSec)}/s`
+}
+
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '—'
+  const total = Math.floor(seconds)
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const remaining = total % 60
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${remaining}s`
+  return `${remaining}s`
 }

@@ -15,11 +15,13 @@ The Tauri shell, NSIS bundle, and install/start smoke test passed on the
 GitHub `windows-latest` runner. This is runner validation, not a claim of
 Windows 10/11 user-machine or interactive browser compatibility.
 
-Checkpointed interrupted/failed downloads can be resumed from the Active
-Downloads view. Pause/cancel are implemented through engine control files
-and pass Linux and Windows CI engine tests; the installed UI controls have
-not yet been exercised interactively. Download queue and scheduler are not
-implemented yet. DRM circumvention is not implemented.
+Checkpointed interrupted/failed downloads can be resumed from Active
+Downloads, including after restart. Live speed/ETA, settings, history and a
+configurable concurrency queue are connected to desktop state. Pause/cancel
+pass Linux and Windows engine tests. New Playwright/CDP Windows UI and
+Chromium Native Messaging end-to-end tests are pending their first CI run;
+manual Windows interaction remains distinct. Queue priority/reordering and
+scheduler are not implemented. DRM circumvention is not implemented.
 
 ## Run it (exact commands)
 

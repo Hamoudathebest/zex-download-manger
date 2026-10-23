@@ -200,6 +200,19 @@ async function closeApp(page, browser, process) {
   }
 }
 
+async function removeWithRetry(target) {
+  const retryable = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY', 'EACCES'])
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    try {
+      await rm(target, { recursive: true, force: true })
+      return
+    } catch (error) {
+      if (!retryable.has(error?.code) || attempt === 29) throw error
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+}
+
 let appProcess
 let desktopBrowser
 let edgeContext
@@ -358,6 +371,7 @@ try {
   console.log('PASS finished download history can be cleared from the desktop UI')
 } finally {
   if (edgeContext) await edgeContext.close().catch(() => {})
+  await new Promise((resolve) => setTimeout(resolve, 500))
   if (desktopBrowser && appProcess) {
     const pages = desktopBrowser.contexts().flatMap((context) => context.pages())
     const page = pages[0]
@@ -376,5 +390,5 @@ try {
   }
   if (extensionDownload) await rm(extensionDownload, { force: true }).catch(() => {})
   await new Promise((resolve) => server.close(() => resolve()))
-  await rm(temporaryRoot, { recursive: true, force: true })
+  await removeWithRetry(temporaryRoot)
 }

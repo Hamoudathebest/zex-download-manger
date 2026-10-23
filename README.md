@@ -9,10 +9,9 @@ from scratch, in the open, with no proprietary code.
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
 > `windows-latest`, including engine lifecycle controls. The current changes
 > add Playwright/CDP Windows GUI and browser tests. Run `39934826380` passed
-> settings, queueing, Pause, restart/Resume/completion and Cancel, then Edge's
-> TCP debugging endpoint failed before Native Messaging. The latest run
-> passed these UI actions but read persisted settings before their async load
-> completed; the test now waits for values. This is not a
+> settings, queueing, Pause, restart/Resume/completion and Cancel. Its browser
+> stage ended with a locked Edge profile during cleanup (`EBUSY`), masking the
+> Native Messaging assertion result; retryable cleanup is being added. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

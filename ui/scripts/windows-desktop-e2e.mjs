@@ -270,7 +270,7 @@ try {
   await page.getByRole('button', { name: 'Download now' }).click()
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   let row = await rowByName(page, 'paused.bin')
-  await row.getByRole('button', { name: 'Pause' }).waitFor({ state: 'visible', timeout })
+  await row.getByRole('button', { name: 'Pause', exact: true }).waitFor({ state: 'visible', timeout })
   await waitForProgress(row)
   const speedText = (await row.locator('td').nth(4).innerText()).trim()
   if (speedText === '—') throw new Error('Engine speed sample was not displayed.')
@@ -288,9 +288,9 @@ try {
   console.log('PASS configured one-slot download queue retains waiting work')
 
   await page.getByRole('link', { name: 'Active Downloads' }).click()
-  await row.getByRole('button', { name: 'Pause' }).click()
+  await row.getByRole('button', { name: 'Pause', exact: true }).click()
   row = await waitStatus(page, 'paused.bin', 'paused')
-  await row.getByRole('button', { name: 'Resume' }).waitFor({ state: 'visible', timeout })
+  await row.getByRole('button', { name: 'Resume', exact: true }).waitFor({ state: 'visible', timeout })
   console.log('PASS Add Download and Pause created a resumable checkpoint')
   await waitStatus(page, 'queued.bin', 'active')
   await page.getByRole('link', { name: 'Completed Downloads' }).click()
@@ -309,10 +309,10 @@ try {
   await waitForInputValue(page, 'Speed limit (KiB/s)', '512')
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   row = await rowByName(page, 'paused.bin')
-  if (!(await row.getByRole('button', { name: 'Resume' }).isVisible())) {
+  if (!(await row.getByRole('button', { name: 'Resume', exact: true }).isVisible())) {
     throw new Error('Paused download was not resumable after restarting the desktop application.')
   }
-  await row.getByRole('button', { name: 'Resume' }).click()
+  await row.getByRole('button', { name: 'Resume', exact: true }).click()
   await page.getByRole('link', { name: 'Completed Downloads' }).click()
   row = await waitStatus(page, 'paused.bin', 'completed')
   const resumedData = await readFile(path.join(downloadDirectory, 'paused.bin'))
@@ -327,10 +327,10 @@ try {
   await page.getByRole('button', { name: 'Download now' }).click()
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   row = await rowByName(page, 'cancelled.bin')
-  await row.getByRole('button', { name: 'Cancel' }).click()
+  await row.getByRole('button', { name: 'Cancel', exact: true }).click()
   await page.getByRole('link', { name: 'Download History' }).click()
   row = await waitStatus(page, 'cancelled.bin', 'cancelled')
-  if (await row.getByRole('button', { name: 'Resume' }).count()) throw new Error('Cancelled job unexpectedly exposes Resume.')
+  if (await row.getByRole('button', { name: 'Resume', exact: true }).count()) throw new Error('Cancelled job unexpectedly exposes Resume.')
   for (const suffix of ['.part', '.checkpoint.json']) {
     try {
       await readFile(path.join(downloadDirectory, `cancelled.bin${suffix}`))
@@ -347,7 +347,7 @@ try {
   await page.getByRole('checkbox', { name: /Start immediately/ }).uncheck()
   await page.getByRole('button', { name: 'Add to queue' }).click()
   row = await waitStatus(page, 'held.bin', 'queued')
-  await row.getByRole('button', { name: 'Start' }).click()
+  await row.getByRole('button', { name: 'Start', exact: true }).click()
   await page.getByRole('link', { name: 'Completed Downloads' }).click()
   await waitStatus(page, 'held.bin', 'completed')
   console.log('PASS manually held queue item starts only after explicit action')

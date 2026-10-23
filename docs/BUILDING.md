@@ -4,7 +4,9 @@
 > earlier Rust, engine integration, Native Messaging, Tauri build, NSIS
 > install/start smoke, media, and extension syntax checks. This revision adds
 > desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in run
-> `39928995290`; Windows E2E failed attaching to WebView2 before UI actions.
+> `39928995290`; on `39933039276` test-only WebView2 CDP worked and the app
+> passed settings, queue insertion and Pause before a missing fixture route
+> stopped the rest of the E2E.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >

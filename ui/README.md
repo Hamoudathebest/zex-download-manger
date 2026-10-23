@@ -18,9 +18,9 @@ Windows 10/11 user-machine or interactive browser compatibility.
 Checkpointed interrupted/failed downloads can be resumed from Active
 Downloads, including after restart. Live speed/ETA, settings, history and a
 configurable concurrency queue are connected to desktop state. Pause/cancel
-pass Linux and Windows engine tests. The first Playwright/CDP Windows run
-stopped before UI interaction because WebView2 CDP did not answer; a
-diagnostic rerun is pending. Manual Windows interaction remains distinct.
+pass Linux and Windows engine tests. The latest Playwright/CDP Windows run
+passed settings, queue insertion and Pause, then stopped at a missing queued
+fixture route; that route is fixed for rerun. Manual Windows interaction remains distinct.
 Queue priority/reordering and
 scheduler are not implemented. DRM circumvention is not implemented.
 

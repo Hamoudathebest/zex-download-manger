@@ -697,8 +697,9 @@ A media job is a normal download job (§9) plus:
 > load/save settings, clear finished history, and register the Chromium
 > Native Messaging host. The frontend displays progress/speed/ETA and uses
 > a persisted concurrency queue. Linux compile/tests pass. New Windows UI
-> and browser E2E failed before interaction due to a WebView2 CDP attach issue;
-> a diagnostic rerun is underway. Manual user-machine verification remains
+> and browser E2E has verified settings, queue insertion and Pause through a
+> test-only WebView2 CDP window; a missing fixture route stopped later tests.
+> Manual user-machine verification remains
 > open. Priority/reordering and scheduler remain
 > unimplemented. This
 > section's remaining design points are future work, not shipped behavior.

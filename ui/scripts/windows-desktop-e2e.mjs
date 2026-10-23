@@ -22,7 +22,7 @@ const downloadDirectory = path.join(temporaryRoot, 'downloads')
 await mkdir(downloadDirectory)
 
 const server = createServer((request, response) => {
-  if (!['GET', 'HEAD'].includes(request.method ?? '') || !/^\/(paused|cancelled|extension)\.bin$/.test(request.url ?? '')) {
+  if (!['GET', 'HEAD'].includes(request.method ?? '') || !/^\/(paused|queued|cancelled|extension)\.bin$/.test(request.url ?? '')) {
     response.writeHead(404).end()
     return
   }
@@ -162,7 +162,8 @@ async function waitStatus(page, name, expected) {
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
-  throw new Error(`Timed out waiting for ${name} to reach ${expected}.`)
+  const observedRows = await page.getByRole('row').allInnerTexts().catch(() => [])
+  throw new Error(`Timed out waiting for ${name} to reach ${expected}. Rows: ${JSON.stringify(observedRows)}`)
 }
 
 async function waitForProgress(row) {

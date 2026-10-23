@@ -95,15 +95,14 @@ jobs:
           if (-not $app) { throw 'Installed Tauri application executable was not found.' }
           "app-path=$($app.FullName)" >> $env:GITHUB_OUTPUT
 
+      - name: Install Playwright Chromium test browser
+        working-directory: ui
+        run: npx playwright-core install chromium
+
       - name: Exercise desktop UI and Chromium Native Messaging end-to-end
         shell: pwsh
         run: |
-          $edge = @(
-            "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
-            "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $edge) { $edge = (Get-Command msedge.exe -ErrorAction Stop).Source }
-          node ui/scripts/windows-desktop-e2e.mjs '${{ steps.install-app.outputs.app-path }}' $edge $PWD
+          node ui/scripts/windows-desktop-e2e.mjs '${{ steps.install-app.outputs.app-path }}' $PWD
 
       - name: Rebuild production Windows application without E2E debugging
         working-directory: ui

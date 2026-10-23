@@ -7,9 +7,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { chromium } from 'playwright-core'
 
-const [appPath, edgePath, repositoryRoot] = process.argv.slice(2)
-if (!appPath || !edgePath || !repositoryRoot) {
-  throw new Error('Usage: node windows-desktop-e2e.mjs <installed-app.exe> <msedge.exe> <repository-root>')
+const [appPath, repositoryRoot] = process.argv.slice(2)
+if (!appPath || !repositoryRoot) {
+  throw new Error('Usage: node windows-desktop-e2e.mjs <installed-app.exe> <repository-root>')
 }
 
 const timeout = 90_000
@@ -213,15 +213,15 @@ async function removeWithRetry(target) {
   }
 }
 
-function stopEdgeProfileProcesses(profile) {
+function stopBrowserProfileProcesses(profile) {
   try {
     execFileSync('powershell.exe', [
       '-NoProfile', '-Command',
-      '$profile = $env:ZEX_E2E_EDGE_PROFILE; Get-CimInstance Win32_Process | Where-Object { $_.Name -in @("msedge.exe", "msedgewebview2.exe") -and $_.CommandLine -like ("*" + $profile + "*") } | ForEach-Object { & taskkill.exe /PID $_.ProcessId /T /F | Out-Null }',
+      '$profile = $env:ZEX_E2E_BROWSER_PROFILE; Get-CimInstance Win32_Process | Where-Object { $_.Name -in @("chrome.exe", "chromium.exe") -and $_.CommandLine -like ("*" + $profile + "*") } | ForEach-Object { & taskkill.exe /PID $_.ProcessId /T /F | Out-Null }',
     ], {
       encoding: 'utf8',
       stdio: 'ignore',
-      env: { ...process.env, ZEX_E2E_EDGE_PROFILE: profile },
+      env: { ...process.env, ZEX_E2E_BROWSER_PROFILE: profile },
       timeout: 15_000,
     })
   } catch { /* the profile may already be fully closed */ }
@@ -229,10 +229,10 @@ function stopEdgeProfileProcesses(profile) {
 
 let appProcess
 let desktopBrowser
-let edgeContext
+let browserContext
 let extensionId
 let extensionDownload
-const edgeProfile = path.join(temporaryRoot, 'edge-profile')
+const browserProfile = path.join(temporaryRoot, 'chromium-profile')
 try {
   let appPort = await availablePort()
   appProcess = startApp(appPort)
@@ -341,8 +341,7 @@ try {
   await page.getByRole('button', { name: 'Register Native Messaging host' }).click()
   await page.getByRole('status').filter({ hasText: 'Registered Native Messaging' }).waitFor({ state: 'visible' })
 
-  edgeContext = await chromium.launchPersistentContext(edgeProfile, {
-    executablePath: edgePath,
+  browserContext = await chromium.launchPersistentContext(browserProfile, {
     headless: false,
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [
@@ -350,12 +349,12 @@ try {
       `--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`,
     ],
   })
-  const extensionPage = await edgeContext.newPage()
+  const extensionPage = await browserContext.newPage()
   extensionPage.setDefaultTimeout(timeout)
   await extensionPage.goto(`chrome-extension://${extensionId}/popup.html`)
   await extensionPage.getByRole('button', { name: 'Check connection' }).click()
   await extensionPage.getByText('Connected', { exact: true }).waitFor({ state: 'visible', timeout })
-  console.log('PASS Windows Chromium extension completed a live Native Messaging ping')
+  console.log('PASS Windows Playwright Chromium extension completed a live Native Messaging ping')
 
   extensionDownload = path.join(downloadDirectory, 'extension.bin')
   await extensionPage.getByLabel('Send a chosen URL directly to the desktop app').fill(fixtureUrl('extension'))
@@ -384,13 +383,13 @@ try {
   await page.getByText('No downloads to show.').waitFor({ state: 'visible' })
   console.log('PASS finished download history can be cleared from the desktop UI')
 } finally {
-  if (edgeContext) {
+  if (browserContext) {
     await Promise.race([
-      edgeContext.close().catch(() => {}),
+      browserContext.close().catch(() => {}),
       new Promise((resolve) => setTimeout(resolve, 10_000)),
     ])
   }
-  stopEdgeProfileProcesses(edgeProfile)
+  stopBrowserProfileProcesses(browserProfile)
   await new Promise((resolve) => setTimeout(resolve, 500))
   if (desktopBrowser && appProcess) {
     const pages = desktopBrowser.contexts().flatMap((context) => context.pages())

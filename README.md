@@ -11,7 +11,7 @@ from scratch, in the open, with no proprietary code.
 > add Playwright/CDP Windows GUI and browser tests. Run `39934826380` passed
 > settings, queueing, Pause, restart/Resume/completion and Cancel. Its browser
 > stage ended with a locked Edge profile during cleanup (`EBUSY`), masking the
-> Native Messaging assertion result; retryable cleanup is being added. This is not a
+> Native Messaging result; the next run uses Playwright-managed Chromium. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

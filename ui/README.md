@@ -18,10 +18,10 @@ Windows 10/11 user-machine or interactive browser compatibility.
 Checkpointed interrupted/failed downloads can be resumed from Active
 Downloads, including after restart. Live speed/ETA, settings, history and a
 configurable concurrency queue are connected to desktop state. Pause/cancel
-pass Linux and Windows engine tests. Windows run `39938862290` passed settings,
+pass Linux and Windows engine tests. Windows run `39960878271` passed settings,
 queueing, Pause, restart/Resume, completion and Cancel. The Edge profile remained
-locked during cleanup, masking the Native Messaging test result; cleanup retry
-is added. Manual Windows interaction remains distinct.
+locked during cleanup, masking the Native Messaging test result; the rerun uses
+Playwright-installed Chromium with targeted cleanup. Manual Windows interaction remains distinct.
 Queue priority/reordering and
 scheduler are not implemented. DRM circumvention is not implemented.
 

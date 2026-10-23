@@ -22,7 +22,11 @@ const downloadDirectory = path.join(temporaryRoot, 'downloads')
 await mkdir(downloadDirectory)
 
 const server = createServer((request, response) => {
-  if (!['GET', 'HEAD'].includes(request.method ?? '') || !/^\/(paused|queued|cancelled|extension)\.bin$/.test(request.url ?? '')) {
+  if (request.method === 'GET' && request.url === '/browser-test') {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end('<!doctype html><title>ZEX browser integration test origin</title>')
+    return
+  }
+  if (!['GET', 'HEAD'].includes(request.method ?? '') || !/^\/(paused|queued|cancelled|held|extension)\.bin$/.test(request.url ?? '')) {
     response.writeHead(404).end()
     return
   }
@@ -188,6 +192,16 @@ async function waitForInputValue(page, label, expected) {
   throw new Error(`Setting ${label} did not load after restart (expected ${expected}; got ${observed}).`)
 }
 
+async function waitForExtensionWorker(context, id) {
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    const worker = context.serviceWorkers().find((candidate) => candidate.url().startsWith(`chrome-extension://${id}/`))
+    if (worker) return worker
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  throw new Error(`Test Chromium did not load the ZEX extension service worker for ${id}.`)
+}
+
 async function closeApp(page, browser, process) {
   await page.keyboard.press('Alt+F4').catch(() => {})
   const deadline = Date.now() + 12_000
@@ -241,16 +255,17 @@ try {
 
   await page.getByRole('link', { name: 'Settings' }).click()
   await page.getByLabel('Download folder').fill(downloadDirectory)
-  await page.getByLabel('Connections per download (1–32)').fill('2')
-  await page.getByLabel('Maximum simultaneous desktop downloads (1–16)').fill('1')
-  await page.getByLabel('Speed limit (KiB/s; 0 = unlimited)').fill('512')
-  await page.getByLabel('Retries per segment (1–20)').fill('2')
-  await page.getByRole('button', { name: 'Save settings' }).click()
+  await page.getByLabel('Connections per download').fill('2')
+  await page.getByLabel('Maximum desktop downloads').fill('1')
+  await page.getByLabel('Speed limit (KiB/s)').fill('512')
+  await page.getByLabel('Retries per segment').fill('2')
+  await page.getByRole('button', { name: 'Save changes' }).click()
   await page.getByRole('status').filter({ hasText: 'Settings saved.' }).waitFor({ state: 'visible' })
   console.log('PASS settings persisted through desktop form')
 
-  await page.getByLabel('Download URL').fill(fixtureUrl('paused'))
   await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByLabel('Download URL').fill(fixtureUrl('paused'))
+  await page.getByRole('button', { name: 'Download now' }).click()
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   let row = await rowByName(page, 'paused.bin')
   await row.getByRole('button', { name: 'Pause' }).waitFor({ state: 'visible', timeout })
@@ -263,8 +278,9 @@ try {
   if (Number(speedMatch[1]) * scale > 850 * 1024) throw new Error(`Configured speed limit was not applied: ${speedText}`)
   if ((await row.locator('td').nth(5).innerText()).trim() === '—') throw new Error('Engine ETA sample was not displayed.')
 
-  await page.getByLabel('Download URL').fill(fixtureUrl('queued'))
   await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByLabel('Download URL').fill(fixtureUrl('queued'))
+  await page.getByRole('button', { name: 'Download now' }).click()
   await page.getByRole('link', { name: 'Download Queue' }).click()
   await waitStatus(page, 'queued.bin', 'queued')
   console.log('PASS configured one-slot download queue retains waiting work')
@@ -286,8 +302,8 @@ try {
   page = await appPage(desktopBrowser)
   await page.getByRole('link', { name: 'Settings' }).click()
   await waitForInputValue(page, 'Download folder', downloadDirectory)
-  await waitForInputValue(page, 'Connections per download (1–32)', '2')
-  await waitForInputValue(page, 'Speed limit (KiB/s; 0 = unlimited)', '512')
+  await waitForInputValue(page, 'Connections per download', '2')
+  await waitForInputValue(page, 'Speed limit (KiB/s)', '512')
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   row = await rowByName(page, 'paused.bin')
   if (!(await row.getByRole('button', { name: 'Resume' }).isVisible())) {
@@ -303,8 +319,9 @@ try {
   await row.getByRole('progressbar', { name: 'Progress for paused.bin' }).waitFor({ state: 'visible' })
   console.log('PASS Resume after application restart completed the download')
 
-  await page.getByLabel('Download URL').fill(fixtureUrl('cancelled'))
   await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByLabel('Download URL').fill(fixtureUrl('cancelled'))
+  await page.getByRole('button', { name: 'Download now' }).click()
   await page.getByRole('link', { name: 'Active Downloads' }).click()
   row = await rowByName(page, 'cancelled.bin')
   await row.getByRole('button', { name: 'Cancel' }).click()
@@ -322,6 +339,16 @@ try {
   }
   console.log('PASS Cancel removed active partial state and retained history')
 
+  await page.getByRole('button', { name: 'Add download' }).click()
+  await page.getByLabel('Download URL').fill(fixtureUrl('held'))
+  await page.getByRole('checkbox', { name: /Start immediately/ }).uncheck()
+  await page.getByRole('button', { name: 'Add to queue' }).click()
+  row = await waitStatus(page, 'held.bin', 'queued')
+  await row.getByRole('button', { name: 'Start' }).click()
+  await page.getByRole('link', { name: 'Completed Downloads' }).click()
+  await waitStatus(page, 'held.bin', 'completed')
+  console.log('PASS manually held queue item starts only after explicit action')
+
   const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
   const extensionDirectory = path.join(temporaryRoot, 'extension')
   await cp(path.join(repositoryRoot, 'extension'), extensionDirectory, { recursive: true })
@@ -329,6 +356,10 @@ try {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   const publicDer = publicKey.export({ type: 'spki', format: 'der' })
   manifest.key = publicDer.toString('base64')
+  manifest.web_accessible_resources = [
+    ...(manifest.web_accessible_resources ?? []),
+    { resources: ['popup.html', 'popup.js', 'popup.css'], matches: ['http://127.0.0.1/*'] },
+  ]
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   const keyHash = createHash('sha256').update(publicDer).digest()
   extensionId = [...keyHash.subarray(0, 16)]
@@ -351,8 +382,10 @@ try {
       `--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`,
     ],
   })
+  await waitForExtensionWorker(browserContext, extensionId)
   const extensionPage = await browserContext.newPage()
   extensionPage.setDefaultTimeout(timeout)
+  await extensionPage.goto(`http://127.0.0.1:${serverPort}/browser-test`)
   await extensionPage.goto(`chrome-extension://${extensionId}/popup.html`)
   await extensionPage.getByRole('button', { name: 'Check connection' }).click()
   await extensionPage.getByText('Connected', { exact: true }).waitFor({ state: 'visible', timeout })
@@ -381,8 +414,8 @@ try {
   console.log('PASS extension Native Messaging request downloaded exact bytes and reached desktop history')
 
   await page.getByRole('link', { name: 'Download History' }).click()
-  await page.getByRole('button', { name: 'Clear non-resumable history' }).click()
-  await page.getByText('No downloads to show.').waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'Clear non-resumable' }).click()
+  await page.getByText('Your downloads will appear here when they are added.').waitFor({ state: 'visible' })
   console.log('PASS finished download history can be cleared from the desktop UI')
 } finally {
   if (browserContext) {

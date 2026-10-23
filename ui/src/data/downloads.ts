@@ -30,6 +30,8 @@ export type DownloadStatus =
   | 'interrupted'
   | 'cancelled'
 
+export type DownloadCategory = 'file' | 'video' | 'other'
+
 export interface DownloadItem {
   id: string
   name: string
@@ -39,12 +41,15 @@ export interface DownloadItem {
   /** Bytes/sec, ONLY when reported by the real engine. Null = unknown. */
   speedBytesPerSec: number | null
   status: DownloadStatus
-  category: 'file' | 'video' | 'other'
+  category: DownloadCategory
   addedAt: string
   /** 0–100, ONLY when reported by the real engine. Null = unknown. */
   progressPercent: number | null
+  destination?: string
+  error?: string | null
   etaSeconds?: number | null
   resumable?: boolean
+  startManually?: boolean
 }
 
 export type ConnectionState = 'loading' | 'connected' | 'disconnected'
@@ -122,9 +127,22 @@ export async function loadEngineState(signal?: AbortSignal): Promise<DownloadsDa
   }
 }
 
-export async function startDesktopDownload(url: string): Promise<void> {
+export async function startDesktopDownload(
+  url: string,
+  options: {
+    filename?: string
+    destinationDirectory?: string
+    category?: DownloadCategory
+    startImmediately?: boolean
+  } = {},
+): Promise<void> {
   if (!isDesktopRuntime()) throw new Error('Adding downloads requires the ZEX desktop application.')
-  await invoke('start_download', { url })
+  await invoke('start_download', { url, ...options })
+}
+
+export async function startQueuedDesktopDownload(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Starting queued downloads requires the ZEX desktop application.')
+  await invoke('start_queued_download', { id })
 }
 
 export async function resumeDesktopDownload(id: string): Promise<void> {
@@ -155,6 +173,16 @@ export async function saveDesktopSettings(settings: DesktopSettings): Promise<De
 export async function clearDesktopHistory(): Promise<void> {
   if (!isDesktopRuntime()) throw new Error('Download history is available only in the ZEX desktop application.')
   await invoke('clear_history')
+}
+
+export async function openDownloadedFile(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Opening downloads requires the ZEX desktop application.')
+  await invoke('open_download_file', { id })
+}
+
+export async function openContainingFolder(id: string): Promise<void> {
+  if (!isDesktopRuntime()) throw new Error('Opening download folders requires the ZEX desktop application.')
+  await invoke('open_download_folder', { id })
 }
 
 export function formatBytes(bytes: number | null): string {

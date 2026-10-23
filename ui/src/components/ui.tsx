@@ -1,58 +1,186 @@
-import type { ReactNode } from 'react'
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { formatBytes, formatDuration, formatSpeed, type DownloadItem } from '../data/downloads'
 import { PREVIEW_NOTICE } from '../data/preview'
+import { Icon, type IconName } from './icons'
 
-export function PageHeader({ title, description }: { title: string; description: string }) {
+export { Icon } from './icons'
+
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+
+export function Button({
+  variant = 'secondary',
+  size = 'normal',
+  icon,
+  children,
+  className = '',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant
+  size?: 'normal' | 'small'
+  icon?: IconName
+}) {
   return (
-    <header className="mb-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{description}</p>
+    <button
+      {...props}
+      className={`button button-${variant} button-${size} interactive ${className}`}
+    >
+      {icon && <Icon name={icon} size={size === 'small' ? 15 : 17} />}
+      {children}
+    </button>
+  )
+}
+
+export function IconButton({
+  icon,
+  label,
+  className = '',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
+  return (
+    <button {...props} type={props.type ?? 'button'} aria-label={label} title={label} className={`icon-button interactive ${className}`}>
+      <Icon name={icon} />
+    </button>
+  )
+}
+
+export function PageHeader({
+  title,
+  description,
+  eyebrow,
+  actions,
+}: {
+  title: string
+  description?: string
+  eyebrow?: string
+  actions?: ReactNode
+}) {
+  return (
+    <header className="page-heading">
+      <div className="page-heading-copy">
+        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
+      </div>
+      {actions && <div className="page-heading-actions">{actions}</div>}
     </header>
   )
 }
 
 export function ConnectionBanner({
-  connection, error, preview, onTogglePreview,
+  connection,
+  error,
+  preview,
+  onTogglePreview,
 }: {
   connection: string
   error: string | null
   preview: boolean
   onTogglePreview: () => void
 }) {
+  const connected = connection === 'connected'
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
-    >
-      {preview ? (
-        <p><strong>PREVIEW MODE.</strong> {PREVIEW_NOTICE} Turn it off to return to the disconnected state.</p>
-      ) : connection === 'disconnected' ? (
-        <p><strong>Download engine unavailable.</strong> Live progress is shown only when the desktop service or configured engine-state endpoint responds. {error}</p>
-      ) : connection === 'connected' ? (
-        <p><strong>Connected to the download engine.</strong> Values below come from the live engine state.</p>
-      ) : (
-        <p>Checking the download engine…</p>
-      )}
-      <button
-        type="button"
-        onClick={onTogglePreview}
-        aria-pressed={preview}
-        className="mt-3 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-gray-900"
-      >
-        {preview ? 'Exit labelled UI preview' : 'Show labelled UI preview (static, not live)'}
+    <div className={`connection-banner ${preview ? 'connection-preview' : connected ? 'connection-ok' : 'connection-error'}`} role="status" aria-live="polite">
+      <span className="connection-dot" />
+      <div className="connection-copy">
+        <strong>{preview ? 'Preview data' : connected ? 'Engine connected' : connection === 'loading' ? 'Connecting to engine' : 'Engine unavailable'}</strong>
+        <span>{preview ? PREVIEW_NOTICE : connected ? 'Download state is being read from the desktop engine.' : connection === 'loading' ? 'Reading persisted download state…' : error ?? 'The desktop engine state could not be loaded.'}</span>
+      </div>
+      <button type="button" className="connection-preview-toggle" onClick={onTogglePreview} aria-pressed={preview}>
+        {preview ? 'Exit preview' : 'Preview UI'}
       </button>
     </div>
   )
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({
+  title = 'Nothing here yet',
+  message,
+  icon = 'download',
+  action,
+}: {
+  title?: string
+  message: string
+  icon?: IconName
+  action?: ReactNode
+}) {
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-      <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        Downloads appear here after the desktop engine reports their actual state.
-      </p>
+    <div className="empty-state">
+      <div className="empty-icon"><Icon name={icon} size={24} /></div>
+      <h2>{title}</h2>
+      <p>{message}</p>
+      {action && <div className="empty-action">{action}</div>}
+    </div>
+  )
+}
+
+const statusInfo: Record<string, { label: string; className: string; icon: IconName }> = {
+  active: { label: 'Downloading', className: 'status-active', icon: 'download' },
+  queued: { label: 'Queued', className: 'status-queued', icon: 'clock' },
+  paused: { label: 'Paused', className: 'status-paused', icon: 'pause' },
+  interrupted: { label: 'Interrupted', className: 'status-interrupted', icon: 'refresh' },
+  completed: { label: 'Completed', className: 'status-completed', icon: 'check' },
+  failed: { label: 'Failed', className: 'status-failed', icon: 'warning' },
+  cancelled: { label: 'Cancelled', className: 'status-muted', icon: 'close' },
+  scheduled: { label: 'Scheduled', className: 'status-queued', icon: 'calendar' },
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const info = statusInfo[status] ?? { label: status, className: 'status-muted', icon: 'info' as const }
+  return <span className={`status-badge ${info.className}`}><Icon name={info.icon} size={13} />{info.label}</span>
+}
+
+export function ProgressBar({ value, label }: { value: number | null; label: string }) {
+  if (value === null) return <div className="progress-unknown" aria-label={`${label}: progress unavailable`}>Waiting for size</div>
+  const progress = Math.max(0, Math.min(100, value))
+  return (
+    <div className="progress-wrap">
+      <div className="progress-track" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={`Progress for ${label}`}>
+        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+      <span className="progress-value">{Math.round(progress)}%</span>
+    </div>
+  )
+}
+
+function sourceHost(url: string) {
+  try { return new URL(url).hostname || url } catch { return url }
+}
+
+function fileIcon(name: string): IconName {
+  const extension = name.split('.').pop()?.toLowerCase()
+  if (['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(extension ?? '')) return 'video'
+  if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension ?? '')) return 'music'
+  if (['zip', 'rar', '7z', 'gz', 'tar'].includes(extension ?? '')) return 'archive'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension ?? '')) return 'image'
+  if (['pdf', 'doc', 'docx', 'txt', 'csv'].includes(extension ?? '')) return 'document'
+  return 'file'
+}
+
+function DownloadActions({
+  item,
+  onResume,
+  onPause,
+  onCancel,
+  onOpenFile,
+  onOpenFolder,
+  onStartQueued,
+}: {
+  item: DownloadItem
+  onResume?: (id: string) => Promise<void>
+  onPause?: (id: string) => Promise<void>
+  onCancel?: (id: string) => Promise<void>
+  onOpenFile?: (id: string) => Promise<void>
+  onOpenFolder?: (id: string) => Promise<void>
+  onStartQueued?: (id: string) => Promise<void>
+}) {
+  return (
+    <div className="download-actions">
+      {item.status === 'queued' && item.startManually && onStartQueued && <Button size="small" variant="primary" icon="play" onClick={() => void onStartQueued(item.id)}>Start</Button>}
+      {item.status === 'active' && onPause && <Button size="small" icon="pause" onClick={() => void onPause(item.id)}>Pause</Button>}
+      {item.resumable && onResume && <Button size="small" variant="primary" icon="play" onClick={() => void onResume(item.id)}>Resume</Button>}
+      {item.status === 'completed' && onOpenFile && <IconButton icon="external" label={`Open ${item.name}`} onClick={() => void onOpenFile(item.id)} />}
+      {item.status === 'completed' && onOpenFolder && <IconButton icon="folder" label={`Show ${item.name} in folder`} onClick={() => void onOpenFolder(item.id)} />}
+      {onCancel && ['active', 'queued', 'paused', 'interrupted', 'failed'].includes(item.status) && <Button size="small" variant="danger" icon="close" onClick={() => void onCancel(item.id)}>Cancel</Button>}
     </div>
   )
 }
@@ -63,130 +191,123 @@ export function DownloadTable({
   onResumeDownload,
   onPauseDownload,
   onCancelDownload,
+  onOpenDetails,
+  onOpenFile,
+  onOpenFolder,
+  onStartQueuedDownload,
+  showViewToggle = true,
+  initialView = 'table',
 }: {
   items: DownloadItem[]
   preview: boolean
   onResumeDownload?: (id: string) => Promise<void>
   onPauseDownload?: (id: string) => Promise<void>
   onCancelDownload?: (id: string) => Promise<void>
+  onOpenDetails?: (item: DownloadItem) => void
+  onOpenFile?: (id: string) => Promise<void>
+  onOpenFolder?: (id: string) => Promise<void>
+  onStartQueuedDownload?: (id: string) => Promise<void>
+  showViewToggle?: boolean
+  initialView?: 'table' | 'list'
 }) {
-  if (items.length === 0) return <EmptyState message="No downloads to show." />
+  const [view, setView] = useState<'table' | 'list'>(initialView)
+  if (items.length === 0) {
+    return <EmptyState icon="download" message="Your downloads will appear here when they are added." />
+  }
+  const actions = { onResume: onResumeDownload, onPause: onPauseDownload, onCancel: onCancelDownload, onOpenFile, onOpenFolder, onStartQueued: onStartQueuedDownload }
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <caption className="sr-only">
-          {preview ? 'Static preview downloads — not live activity' : 'Downloads from the engine'}
-        </caption>
-        <thead className="bg-gray-100 dark:bg-gray-800">
-          <tr>
-            <th scope="col" className="px-4 py-2">Name</th>
-            <th scope="col" className="px-4 py-2">Status</th>
-            <th scope="col" className="px-4 py-2">Size</th>
-            <th scope="col" className="px-4 py-2">Progress</th>
-            <th scope="col" className="px-4 py-2">Speed</th>
-            <th scope="col" className="px-4 py-2">ETA</th>
-            {(onResumeDownload || onPauseDownload || onCancelDownload) && <th scope="col" className="px-4 py-2">Actions</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((d) => (
-            <tr key={d.id} className="border-t border-gray-200 dark:border-gray-700">
-              <td className="px-4 py-2">
-                <span className="font-medium text-gray-900 dark:text-white">{d.name}</span>
-                {preview && (
-                  <span className="ml-2 rounded bg-amber-200 px-1.5 py-0.5 text-xs font-bold text-amber-900">PREVIEW</span>
-                )}
-                <span className="block max-w-[280px] truncate text-xs text-gray-500">{d.url}</span>
-              </td>
-              <td className="px-4 py-2">{d.status}</td>
-              <td className="px-4 py-2">{formatBytes(d.sizeBytes)}</td>
-              <td className="px-4 py-2">
-                {d.progressPercent === null ? (
-                  '—'
-                ) : (
-                  <>
-                    <span aria-label={`${d.progressPercent} percent complete`}>{d.progressPercent}%</span>
-                    <span
-                      role="progressbar"
-                      aria-valuenow={d.progressPercent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`Progress for ${d.name}`}
-                      className="mt-1 block h-2 w-28 overflow-hidden rounded bg-gray-200 dark:bg-gray-700"
-                    >
-                      <span className="block h-full bg-blue-600" style={{ width: `${d.progressPercent}%` }} />
-                    </span>
-                  </>
-                )}
-              </td>
-              <td className="px-4 py-2">{formatSpeed(d.speedBytesPerSec)}</td>
-              <td className="px-4 py-2">{formatDuration(d.etaSeconds)}</td>
-              {(onResumeDownload || onPauseDownload || onCancelDownload) && (
-                <td className="px-4 py-2">
-                  {d.status === 'active' && onPauseDownload && (
-                    <button
-                      type="button"
-                      onClick={() => void onPauseDownload(d.id)}
-                      className="mr-1 rounded border border-gray-500 px-2 py-1 text-xs font-medium"
-                    >Pause</button>
-                  )}
-                  {d.resumable && onResumeDownload && (
-                    <button
-                      type="button"
-                      onClick={() => void onResumeDownload(d.id)}
-                      className="mr-1 rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
-                    >
-                      Resume
-                    </button>
-                  )}
-                  {onCancelDownload && ['active', 'queued', 'paused', 'interrupted', 'failed'].includes(d.status) && (
-                    <button
-                      type="button"
-                      onClick={() => void onCancelDownload(d.id)}
-                      className="rounded border border-red-600 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300"
-                    >Cancel</button>
-                  )}
-                  {d.status !== 'active' && !d.resumable && !onCancelDownload && '—'}
-                </td>
-              )}
-            </tr>
+    <section className="download-list-shell">
+      {showViewToggle && (
+        <div className="list-toolbar">
+          <div className="list-result-count">{items.length} {items.length === 1 ? 'download' : 'downloads'}{preview && <span className="preview-pill">PREVIEW</span>}</div>
+          <div className="view-switch" role="group" aria-label="Download display mode">
+            <IconButton icon="list" label="Table view" aria-pressed={view === 'table'} onClick={() => setView('table')} className={view === 'table' ? 'view-selected' : ''} />
+            <IconButton icon="grid" label="List view" aria-pressed={view === 'list'} onClick={() => setView('list')} className={view === 'list' ? 'view-selected' : ''} />
+          </div>
+        </div>
+      )}
+      {view === 'table' ? (
+        <div className="table-scroll">
+          <table className="download-table">
+            <caption className="sr-only">{preview ? 'Static preview downloads, not live activity' : 'Downloads from the desktop engine'}</caption>
+            <thead><tr><th>File</th><th>Status</th><th>Size</th><th className="progress-heading">Progress</th><th>Speed</th><th>Time left</th><th><span className="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              {items.map((item) => (
+                <tr className="table-row" key={item.id}>
+                  <td className="file-cell">
+                    <span className="file-icon"><Icon name={fileIcon(item.name)} size={18} /></span>
+                    <div className="file-cell-copy">
+                      <button type="button" className="file-name" onClick={() => onOpenDetails?.(item)} title={item.name}>{item.name}</button>
+                      <span className="file-host" title={item.url}>{sourceHost(item.url)}</span>
+                    </div>
+                    {preview && <span className="preview-pill">DEMO</span>}
+                  </td>
+                  <td><StatusBadge status={item.status} /></td>
+                  <td><div className="size-primary">{formatBytes(item.sizeBytes)}</div><div className="size-subtle">{formatBytes(item.downloadedBytes)} downloaded</div></td>
+                  <td className="progress-cell"><ProgressBar value={item.progressPercent} label={item.name} /></td>
+                  <td className="metric-cell">{formatSpeed(item.speedBytesPerSec)}</td>
+                  <td className="metric-cell">{item.status === 'completed' ? '—' : formatDuration(item.etaSeconds)}</td>
+                  <td><DownloadActions item={item} {...actions} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="download-card-list">
+          {items.map((item) => (
+            <article key={item.id} className="download-card-row" onDoubleClick={() => onOpenDetails?.(item)}>
+              <span className="file-icon file-icon-large"><Icon name={fileIcon(item.name)} size={20} /></span>
+              <div className="download-card-main">
+                <div className="download-card-titleline">
+                  <button type="button" className="file-name" onClick={() => onOpenDetails?.(item)}>{item.name}</button>
+                  <StatusBadge status={item.status} />
+                  {preview && <span className="preview-pill">DEMO</span>}
+                </div>
+                <span className="file-host" title={item.url}>{sourceHost(item.url)} · {formatBytes(item.downloadedBytes)} of {formatBytes(item.sizeBytes)}</span>
+                <ProgressBar value={item.progressPercent} label={item.name} />
+              </div>
+              <div className="download-card-metrics"><strong>{formatSpeed(item.speedBytesPerSec)}</strong><span>{item.status === 'completed' ? 'Complete' : formatDuration(item.etaSeconds)}</span></div>
+              <DownloadActions item={item} {...actions} />
+            </article>
           ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-export function StatCard({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <section
-      aria-label={label}
-      className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
-    >
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</h2>
-      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{note}</p>
+        </div>
+      )}
     </section>
   )
 }
 
-export function Card({ title, children }: { title: string; children: ReactNode }) {
+export function StatCard({
+  label,
+  value,
+  note,
+  icon,
+  tone = 'primary',
+}: {
+  label: string
+  value: string
+  note: string
+  icon?: IconName
+  tone?: 'primary' | 'cyan' | 'green' | 'amber'
+}) {
   return (
-    <section
-      aria-label={title}
-      className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
-    >
-      <h2 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-      <div className="text-sm text-gray-700 dark:text-gray-200">{children}</div>
+    <section className={`stat-card stat-${tone}`} aria-label={label}>
+      <div className="stat-top"><span>{label}</span>{icon && <span className="stat-icon"><Icon name={icon} size={18} /></span>}</div>
+      <p className="stat-value">{value}</p>
+      <p className="stat-note">{note}</p>
+    </section>
+  )
+}
+
+export function Card({ title, children, icon }: { title: string; children: ReactNode; icon?: IconName }) {
+  return (
+    <section className="settings-card">
+      <header className="settings-card-header">{icon && <span className="settings-card-icon"><Icon name={icon} size={17} /></span>}<h2>{title}</h2></header>
+      <div className="settings-card-body">{children}</div>
     </section>
   )
 }
 
 export function DisabledActionNote() {
-  return (
-    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-      Queue and scheduler controls are not implemented. Resume is enabled only when
-      a matching partial file and checkpoint are present; no action is simulated otherwise.
-    </p>
-  )
+  return <p className="inline-note"><Icon name="info" size={15} />Queue priority and scheduler automation are not implemented yet.</p>
 }

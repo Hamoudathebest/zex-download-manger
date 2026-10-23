@@ -38,6 +38,8 @@ struct DownloadItem {
     resumable: bool,
     #[serde(default)]
     resume_pending: bool,
+    #[serde(default)]
+    start_manually: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -331,6 +333,10 @@ fn start_download(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
     url: String,
+    filename: Option<String>,
+    destination_directory: Option<String>,
+    category: Option<String>,
+    start_immediately: Option<bool>,
 ) -> Result<DownloadItem, String> {
     let parsed = Url::parse(&url).map_err(|_| "Enter a valid http(s) URL.".to_string())?;
     if !matches!(parsed.scheme(), "http" | "https")
@@ -341,21 +347,35 @@ fn start_download(
         return Err("Only credential-free http(s) URLs can be downloaded.".to_string());
     }
 
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "desktop settings are unavailable".to_string())?
+        .clone();
     let filename = safe_filename(
-        parsed
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
-            .filter(|segment| !segment.is_empty())
-            .unwrap_or("download"),
+        filename
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or_else(|| {
+                parsed
+                    .path_segments()
+                    .and_then(|mut segments| segments.next_back())
+                    .filter(|segment| !segment.is_empty())
+                    .unwrap_or("download")
+            }),
     );
     let directory = PathBuf::from(
-        state
-            .settings
-            .lock()
-            .map_err(|_| "desktop settings are unavailable".to_string())?
-            .download_directory
-            .clone(),
+        destination_directory
+            .filter(|path| !path.trim().is_empty())
+            .unwrap_or(settings.download_directory.clone()),
     );
+    if !directory.is_absolute() {
+        return Err("Download destination must be an absolute path.".to_string());
+    }
+    let category = category
+        .filter(|category| matches!(category.as_str(), "file" | "video" | "other"))
+        .unwrap_or_else(|| category_for(&directory.join(&filename)));
+    let start_manually = !start_immediately.unwrap_or(true);
     fs::create_dir_all(&directory)
         .map_err(|error| format!("could not create Downloads folder: {error}"))?;
     let destination = unused_destination(&directory, &filename)?;
@@ -373,7 +393,7 @@ fn start_download(
         downloaded_bytes: Some(0),
         speed_bytes_per_sec: None,
         status: "queued".to_string(),
-        category: category_for(&destination),
+        category,
         added_at: now_millis().to_string(),
         progress_percent: None,
         eta_seconds: None,
@@ -381,6 +401,7 @@ fn start_download(
         error: None,
         resumable: false,
         resume_pending: false,
+        start_manually,
     };
 
     let mut downloads = state
@@ -394,6 +415,28 @@ fn start_download(
     pump_queue(&app, &state)?;
 
     Ok(item)
+}
+
+#[tauri::command]
+fn start_queued_download(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
+    {
+        let mut downloads = state
+            .downloads
+            .lock()
+            .map_err(|_| "download state is unavailable".to_string())?;
+        let item = downloads
+            .iter_mut()
+            .find(|item| item.id == id && item.status == "queued")
+            .ok_or_else(|| "queued download not found".to_string())?;
+        item.start_manually = false;
+        let snapshot = downloads.clone();
+        state.persist_locked(&snapshot)?;
+    }
+    pump_queue(&app, &state)
 }
 
 #[tauri::command]
@@ -493,6 +536,84 @@ fn cancel_download(state: State<'_, Arc<AppState>>, id: String) -> Result<String
     let snapshot = downloads.clone();
     state.persist_locked(&snapshot)?;
     Ok("Download cancelled; its partial file and checkpoint were removed.".to_string())
+}
+
+#[tauri::command]
+fn open_download_file(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
+    let destination = state
+        .downloads
+        .lock()
+        .map_err(|_| "download state is unavailable".to_string())?
+        .iter()
+        .find(|item| item.id == id)
+        .map(|item| PathBuf::from(&item.destination))
+        .ok_or_else(|| "download not found".to_string())?;
+    if !destination.is_file() {
+        return Err("Downloaded file is not available to open yet.".to_string());
+    }
+    open_path(&destination)
+}
+
+#[tauri::command]
+fn open_download_folder(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
+    let destination = state
+        .downloads
+        .lock()
+        .map_err(|_| "download state is unavailable".to_string())?
+        .iter()
+        .find(|item| item.id == id)
+        .map(|item| PathBuf::from(&item.destination))
+        .ok_or_else(|| "download not found".to_string())?;
+    let folder = destination
+        .parent()
+        .ok_or_else(|| "download folder is unavailable".to_string())?;
+    if !folder.is_dir() {
+        return Err("Download folder is not available to open.".to_string());
+    }
+    #[cfg(windows)]
+    return Command::new("explorer.exe")
+        .arg("/select,")
+        .arg(destination)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("could not open download folder: {error}"));
+    #[cfg(target_os = "macos")]
+    return Command::new("open")
+        .arg(folder)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("could not open download folder: {error}"));
+    #[cfg(all(unix, not(target_os = "macos")))]
+    return Command::new("xdg-open")
+        .arg(folder)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("could not open download folder: {error}"));
+}
+
+fn open_path(path: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    let mut command = {
+        let mut command = Command::new("explorer.exe");
+        command.arg(path);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(path);
+        command
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(path);
+        command
+    };
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("could not open downloaded file: {error}"))
 }
 
 fn engine_command(
@@ -639,7 +760,7 @@ fn pump_queue(app: &AppHandle, state: &Arc<AppState>) -> Result<(), String> {
             if active >= usize::from(settings.max_concurrent_downloads) {
                 return Ok(());
             }
-            let Some(index) = downloads.iter().position(|item| item.status == "queued") else {
+            let Some(index) = next_queued_download_index(&downloads) else {
                 return Ok(());
             };
             let item = &mut downloads[index];
@@ -673,6 +794,12 @@ fn pump_queue(app: &AppHandle, state: &Arc<AppState>) -> Result<(), String> {
         };
         monitor_engine(child, item.id, Arc::clone(state), app.clone())?;
     }
+}
+
+fn next_queued_download_index(downloads: &[DownloadItem]) -> Option<usize> {
+    downloads
+        .iter()
+        .position(|item| item.status == "queued" && !item.start_manually)
 }
 
 fn has_resume_checkpoint(destination: &str) -> bool {
@@ -1019,9 +1146,12 @@ fn main() {
             save_settings,
             clear_history,
             start_download,
+            start_queued_download,
             resume_download,
             pause_download,
             cancel_download,
+            open_download_file,
+            open_download_folder,
             pair_chromium_extensions
         ])
         .run(tauri::generate_context!())
@@ -1040,8 +1170,9 @@ fn e2e_webview_debug_port() -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::{
-        keep_after_history_clear, load_state, parse_progress, read_checkpoint_progress,
-        safe_filename, validate_settings, AppState, DesktopSettings, DownloadItem, ProgressUpdate,
+        keep_after_history_clear, load_state, next_queued_download_index, parse_progress,
+        read_checkpoint_progress, safe_filename, validate_settings, AppState, DesktopSettings,
+        DownloadItem, ProgressUpdate,
     };
     use std::collections::HashMap;
     use std::fs;
@@ -1064,6 +1195,7 @@ mod tests {
             error: None,
             resumable: false,
             resume_pending: false,
+            start_manually: false,
         }
     }
 
@@ -1204,6 +1336,20 @@ mod tests {
                 "failed-resumable"
             ]
         );
+    }
+
+    #[test]
+    fn queue_dispatch_skips_manual_holds_without_reordering_eligible_jobs() {
+        let mut held = item("held", "queued", "C:/Downloads/held.bin");
+        held.start_manually = true;
+        let automatic = item("automatic", "queued", "C:/Downloads/automatic.bin");
+        let active = item("active", "active", "C:/Downloads/active.bin");
+        let jobs = [held.clone(), active, automatic.clone()];
+
+        assert_eq!(next_queued_download_index(&jobs), Some(2));
+        assert_eq!(jobs[0].id, held.id);
+        assert_eq!(jobs[2].id, automatic.id);
+        assert_eq!(next_queued_download_index(&[held]), None);
     }
 
     #[test]

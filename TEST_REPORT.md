@@ -31,3 +31,18 @@ Loopback transfer timings are correctness diagnostics only and are not internet 
 | `zex-download-manager-setup-windows-x64.exe` | NSIS GUI installer | `18fa86fb18b88defcecc2efe17c468297051dfdf53f642483a85e3906817f6f4` |
 
 These checks establish a successful `windows-latest` build and install/start smoke only. `v0.2.0` is a development pre-release, not a stable release. No MSI, signed binary, Windows 10/11 interactive test, or live browser handshake exists yet.
+
+## Premium UI redesign checks — 2026-10-23
+
+The following checks were run in the local `feature/premium-ui-redesign` worktree based on `f4d96bb` (changes are not yet committed):
+
+| Check | Result | Command / details |
+|---|---|---|
+| UI production build | PASS | `cd ui && npm run build`; TypeScript and Vite production build succeeded. |
+| UI lint | PASS | `cd ui && npm run lint`; no warnings. |
+| Tauri Rust formatting and Clippy | PASS | `cd ui/src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings`. |
+| Tauri Rust tests | PASS — 9/9 | `cd ui/src-tauri && cargo test`; includes a new queue-dispatch test for manually held jobs. |
+| Windows E2E script syntax | PASS | `node --check ui/scripts/windows-desktop-e2e.mjs`; selectors updated for redesigned settings/dialog/history and a manual-start scenario added. |
+| Diff whitespace check | PASS | `git diff --check`. |
+| Chromium visual/accessibility replay | PASS for observed routes | Local Chromium replay visited Dashboard, Settings, Appearance/theme switch, Browser Integration, Queue and Performance routes. Captures were complete and reported no page errors; dashboard preview and browser-integration screenshots were reviewed at 1440×960. This is web-preview evidence, not Windows/Tauri desktop verification. |
+| Current Windows desktop/Native Messaging E2E | NOT YET RE-RUN | Latest known run `39969263138` passed settings, queue, Pause/Resume across restart, completion and Cancel, then failed at direct navigation to the extension popup with `net::ERR_BLOCKED_BY_CLIENT`. The local workflow now opens the test popup from a loopback origin and verifies extension-worker load before the handshake; Windows CI must confirm the fix. |

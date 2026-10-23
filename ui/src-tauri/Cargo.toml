@@ -5,6 +5,9 @@ description = "ZEX Download Manager desktop application"
 authors = ["ZEX Download Manager contributors"]
 edition = "2021"
 
+[features]
+e2e-debug-webview = []
+
 [build-dependencies]
 tauri-build = { version = "2" }
 

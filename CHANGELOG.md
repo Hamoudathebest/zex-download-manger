@@ -14,7 +14,9 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
 - Added Playwright/CDP Windows automation for Add, Pause, restart/Resume,
   completion hash, Cancel cleanup, queue/settings/history and real Chromium
   Native Messaging. Windows run `39928995290` failed before interaction
-  because WebView2 CDP was unreachable; a diagnostic/rerun is in progress.
+  because Tauri's configured window ignored the debug flag. The test build
+  now creates a dedicated loopback-debug window; the release artifact is
+  rebuilt without debug flags. Rerun is pending.
   No manual GUI test is claimed.
 - Updated Tokio to 1.54.1 to address RustSec RUSTSEC-2026-0384. Added npm and
   RustSec dependency audit checks to CI; the Tauri Linux GTK dependency tree

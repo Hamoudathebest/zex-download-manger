@@ -10,15 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "ZEX Download Manager",
-        "width": 1180,
-        "height": 780,
-        "minWidth": 760,
-        "minHeight": 560
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

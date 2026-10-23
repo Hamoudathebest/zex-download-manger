@@ -104,10 +104,24 @@ async function connectBrowser(port, process) {
   return chromium.connectOverCDP(`http://127.0.0.1:${port}`)
 }
 
+async function waitForCdpClosed(port) {
+  const url = `http://127.0.0.1:${port}/json/version`
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    try {
+      if ((await fetch(url)).ok) {
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        continue
+      }
+    } catch { return }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error(`Previous WebView2 debugging endpoint did not close: ${url}`)
+}
+
 function startApp(port) {
-  const args = `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`
   const child = spawn(appPath, [], {
-    env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: args },
+    env: { ...process.env, ZEX_E2E_CDP_PORT: String(port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   child.testLogs = []
@@ -226,7 +240,7 @@ try {
 
   await closeApp(page, desktopBrowser, appProcess)
   desktopBrowser = undefined
-  appPort = await availablePort()
+  await waitForCdpClosed(appPort)
   appProcess = startApp(appPort)
   desktopBrowser = await connectBrowser(appPort, appProcess)
   page = await appPage(desktopBrowser)

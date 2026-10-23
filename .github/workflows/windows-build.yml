@@ -79,7 +79,8 @@ jobs:
           npm ci
           npm audit --audit-level=high
           npm run lint
-          npm run tauri:build
+          npm run tauri:icons
+          npx tauri build --features e2e-debug-webview
 
       - name: Install Windows application
         id: install-app
@@ -103,6 +104,10 @@ jobs:
           ) | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $edge) { $edge = (Get-Command msedge.exe -ErrorAction Stop).Source }
           node ui/scripts/windows-desktop-e2e.mjs '${{ steps.install-app.outputs.app-path }}' $edge $PWD
+
+      - name: Rebuild production Windows application without E2E debugging
+        working-directory: ui
+        run: npm run tauri:build
 
       - name: Test media parser and FFmpeg builder
         working-directory: media

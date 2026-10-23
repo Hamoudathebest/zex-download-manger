@@ -12,7 +12,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 static NEXT_DOWNLOAD_ID: AtomicU64 = AtomicU64::new(1);
@@ -992,6 +992,25 @@ fn main() {
                 let _ = state.persist_locked(&downloads);
             }
             app.manage(state);
+            let window = WebviewWindowBuilder::new(
+                app,
+                "main",
+                WebviewUrl::App("index.html".into()),
+            )
+            .title("ZEX Download Manager")
+            .inner_size(1180.0, 780.0)
+            .min_inner_size(760.0, 560.0);
+            #[cfg(all(windows, feature = "e2e-debug-webview"))]
+            let window = match e2e_webview_debug_port() {
+                Some(port) => {
+                    let arguments = format!(
+                        "--remote-debugging-address=127.0.0.1 --remote-debugging-port={port} --remote-allow-origins=* --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
+                    );
+                    window.additional_browser_args(&arguments)
+                }
+                None => window,
+            };
+            window.build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -1007,6 +1026,15 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running ZEX Download Manager");
+}
+
+#[cfg(all(windows, feature = "e2e-debug-webview"))]
+fn e2e_webview_debug_port() -> Option<u16> {
+    std::env::var("ZEX_E2E_CDP_PORT")
+        .ok()?
+        .parse::<u16>()
+        .ok()
+        .filter(|port| *port != 0)
 }
 
 #[cfg(test)]

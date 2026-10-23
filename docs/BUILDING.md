@@ -3,7 +3,8 @@
 > **Current status (2026-10-23):** Windows run `39866677122` passed the
 > earlier Rust, engine integration, Native Messaging, Tauri build, NSIS
 > install/start smoke, media, and extension syntax checks. This revision adds
-> desktop/browser E2E and security-audit jobs; their first Windows run is pending.
+> desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in run
+> `39928995290`; Windows E2E failed attaching to WebView2 before UI actions.
 > This document began as a Phase 1 plan; refer to root `AUDIT.md` and
 > `TEST_REPORT.md` for current findings.
 >
@@ -21,7 +22,7 @@
 | Windows `.exe` | **No** — not built here | Yes — CI artefact, **unsigned by default** |
 | Tauri NSIS installer (`.exe`) | **No** — Windows target only | Built, silently installed and startup-smoke-tested on `windows-latest` |
 | MSI | **No** — not implemented | Not implemented |
-| Native Messaging registry registration | **No** — Windows registry work, not testable here | UI registration command is implemented; new Edge/host E2E is pending |
+| Native Messaging registry registration | **No** — Windows registry work, not testable here | UI registration command is implemented; Edge/host E2E is blocked on WebView2 CDP attachment |
 | Code signing | **No** | **No** — all current artifacts are unsigned |
 
 ## 2. Linux prototype build (what works here)

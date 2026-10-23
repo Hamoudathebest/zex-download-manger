@@ -34,8 +34,9 @@ The output is `installer/download-manager-setup.exe`.
 The application NSIS bundle is configured in `ui/src-tauri/tauri.conf.json`.
 Windows run `39866677122` built it, silently installed it, and verified the
 desktop process remained running during the startup smoke test. New desktop
-and Native Messaging E2E automation is pending its first run; manual Windows
-10/11 testing remains outstanding.
+and Native Messaging E2E failed before UI interaction in run `39928995290`
+because WebView2 CDP was unreachable; a diagnostic rerun is underway. Manual
+Windows 10/11 testing remains outstanding.
 
 ## Signing
 

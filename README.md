@@ -8,8 +8,9 @@ from scratch, in the open, with no proprietary code.
 > Internet Download Manager (IDM). GitHub Actions built the Windows CLI
 > and Tauri NSIS installer, installed it, and smoke-launched the app on
 > `windows-latest`, including engine lifecycle controls. The current changes
-> add Playwright/CDP Windows GUI and browser tests; their first run is
-> pending. This is not a
+> add Playwright/CDP Windows GUI and browser tests. Their first run stopped
+> before interaction because WebView2 CDP was unreachable; a rerun is in
+> progress. This is not a
 > Windows 10/11 user-machine compatibility test. The browser extension
 > has not been live-tested, and builds are
 > unsigned by default. The repository now contains a Rust download engine,

@@ -70,30 +70,50 @@ async function availablePort() {
   return port
 }
 
-async function waitForCdp(port) {
-  const url = `http://127.0.0.1:${port}/json/version`
+async function waitForCdp(port, process) {
+  const urls = [
+    `http://127.0.0.1:${port}/json/version`,
+    `http://localhost:${port}/json/version`,
+    `http://[::1]:${port}/json/version`,
+  ]
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url)
-      if (response.ok) return
-    } catch { /* WebView/Edge is still starting */ }
+    if (process?.exitCode !== null && process?.exitCode !== undefined) {
+      throw new Error(`Browser process exited before CDP initialized (exit ${process.exitCode}).\n${process.testLogs?.join('') ?? ''}`)
+    }
+    for (const url of urls) {
+      try {
+        const response = await fetch(url)
+        if (response.ok) return
+      } catch { /* WebView/Edge is still starting */ }
+    }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
-  throw new Error(`CDP endpoint did not start: ${url}`)
+  let webViewProcesses = 'unavailable'
+  try {
+    webViewProcesses = execFileSync('powershell.exe', [
+      '-NoProfile', '-Command',
+      `Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Select-Object ProcessId,CommandLine | Format-List | Out-String`,
+    ], { encoding: 'utf8', timeout: 10_000 }).trim()
+  } catch { /* retain the endpoint failure if process diagnostics fail */ }
+  throw new Error(`CDP endpoint did not start (${urls.join(', ')}). Process exit=${process?.exitCode}; WebView2: ${webViewProcesses}\n${process?.testLogs?.join('') ?? ''}`)
 }
 
-async function connectBrowser(port) {
-  await waitForCdp(port)
+async function connectBrowser(port, process) {
+  await waitForCdp(port, process)
   return chromium.connectOverCDP(`http://127.0.0.1:${port}`)
 }
 
 function startApp(port) {
   const args = `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`
-  return spawn(appPath, [], {
+  const child = spawn(appPath, [], {
     env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: args },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
+  child.testLogs = []
+  child.stdout.on('data', (data) => child.testLogs.push(data.toString()))
+  child.stderr.on('data', (data) => child.testLogs.push(data.toString()))
+  return child
 }
 
 async function appPage(browser) {
@@ -162,7 +182,7 @@ let extensionDownload
 try {
   let appPort = await availablePort()
   appProcess = startApp(appPort)
-  desktopBrowser = await connectBrowser(appPort)
+  desktopBrowser = await connectBrowser(appPort, appProcess)
   let page = await appPage(desktopBrowser)
 
   await page.getByRole('link', { name: 'Settings' }).click()
@@ -208,7 +228,7 @@ try {
   desktopBrowser = undefined
   appPort = await availablePort()
   appProcess = startApp(appPort)
-  desktopBrowser = await connectBrowser(appPort)
+  desktopBrowser = await connectBrowser(appPort, appProcess)
   page = await appPage(desktopBrowser)
   await page.getByRole('link', { name: 'Settings' }).click()
   if (await page.getByLabel('Download folder').inputValue() !== downloadDirectory) throw new Error('Download folder setting did not persist across restart.')
@@ -275,7 +295,7 @@ try {
     `--load-extension=${extensionDirectory}`, `--remote-debugging-address=127.0.0.1`,
     `--remote-debugging-port=${edgePort}`, 'about:blank',
   ], { stdio: 'ignore' })
-  edgeBrowser = await connectBrowser(edgePort)
+  edgeBrowser = await connectBrowser(edgePort, edgeProcess)
   const extensionPage = await edgeBrowser.newPage()
   extensionPage.setDefaultTimeout(timeout)
   await extensionPage.goto(`chrome-extension://${extensionId}/popup.html`)

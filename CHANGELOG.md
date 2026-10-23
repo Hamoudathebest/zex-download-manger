@@ -13,8 +13,9 @@ follows Keep a Changelog, and versioning follows Semantic Versioning
   chosen http(s) URL to the Native Messaging host without opting in to a site.
 - Added Playwright/CDP Windows automation for Add, Pause, restart/Resume,
   completion hash, Cancel cleanup, queue/settings/history and real Chromium
-  Native Messaging. Its first Windows run is pending; no manual GUI test is
-  claimed.
+  Native Messaging. Windows run `39928995290` failed before interaction
+  because WebView2 CDP was unreachable; a diagnostic/rerun is in progress.
+  No manual GUI test is claimed.
 - Updated Tokio to 1.54.1 to address RustSec RUSTSEC-2026-0384. Added npm and
   RustSec dependency audit checks to CI; the Tauri Linux GTK dependency tree
   still reports existing glib/proc-macro-error advisories.

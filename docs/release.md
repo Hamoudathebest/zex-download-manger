@@ -3,7 +3,8 @@
 > **Current status (2026-10-23):** Windows run `39866677122` passed Rust,
 > engine integration, Native Messaging, Tauri build, NSIS install/start,
 > media and extension syntax checks on `windows-latest`. This branch adds
-> desktop/browser E2E and security-audit jobs; their first run is pending.
+> desktop/browser E2E and security-audit jobs. RustSec/npm audit passed in
+> run `39928995290`; Windows E2E failed before interaction on WebView2 CDP attach.
 > Manual Windows 10/11 user-machine testing remains open. This document
 > remains the original release plan; root
 > `AUDIT.md` and `TEST_REPORT.md` carry the latest evidence.

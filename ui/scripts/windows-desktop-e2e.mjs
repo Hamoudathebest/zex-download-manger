@@ -342,7 +342,9 @@ try {
   await page.getByRole('status').filter({ hasText: 'Registered Native Messaging' }).waitFor({ state: 'visible' })
 
   browserContext = await chromium.launchPersistentContext(browserProfile, {
-    headless: false,
+    channel: 'chromium',
+    headless: true,
+    timeout: 60_000,
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [
       '--no-first-run', '--no-default-browser-check', '--disable-default-apps',
